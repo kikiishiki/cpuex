@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "runsim.h"
 #include "exec_alu.h"
+#include "exec_mem.h"
 #include "mem.h"
 
 void sprit_code(uint32_t code, uint32_t* opcode, uint32_t* reg1, uint32_t* reg2, uint32_t* reg3, int16_t* imm);
@@ -26,6 +27,13 @@ void runsim(uint32_t code)
     break;
   case 0x3:
     fneg(reg1, reg2);
+    break;
+    /* MEMORY */
+  case 0x8:
+    m_load(reg1, reg3, imm);
+    break;
+  case 0x9:
+    m_store(reg1, reg3, imm);
     break;
   default:
     puts("undefined");

@@ -3,11 +3,8 @@
 
 #include "mem.h"
 
-#define INST_POINTER  15
-#define BASE_POINTER
-#define STAC_POINTER
 
-void intialize_reg()
+void initialize_reg()
 {
   reg[0] = 0;
   reg[INST_POINTER] = 0;
