@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
-void runsim(uint32_t code, uint32_t* reg);
+void runsim(uint32_t code);
+
 
 #endif
