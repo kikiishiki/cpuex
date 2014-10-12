@@ -7,7 +7,7 @@ void beq(uint32_t rs, uint32_t rt, uint32_t rb, int16_t imm)
 {
   int32_t address;
 
-  address = reg[rb] + imm;
+  address = reg[rb] + imm - 1;
 
   if (address < 0 || address >= MEM_SIZE) {
     printf("invalid address: %x\n", address);
@@ -25,7 +25,7 @@ void ble(uint32_t rs, uint32_t rt, uint32_t rb, int16_t imm)
 {
   int32_t address;
 
-  address = reg[rb] + imm;
+  address = reg[rb] + imm - 1;
 
   if (address < 0 || address >= MEM_SIZE) {
     printf("invalid address: %x\n", address);

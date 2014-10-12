@@ -3,6 +3,7 @@
 #include "runsim.h"
 #include "exec_alu.h"
 #include "exec_mem.h"
+#include "exec_jump.h"
 #include "mem.h"
 
 void sprit_code(uint32_t code, uint32_t* opcode, uint32_t* reg1, uint32_t* reg2, uint32_t* reg3, int16_t* imm);
@@ -34,6 +35,13 @@ void runsim(uint32_t code)
     break;
   case 0x9:
     m_store(reg1, reg3, imm);
+    break;
+    /* Branch */
+  case 0xc:
+    beq(reg1, reg2, reg3, imm);
+    break;
+  case 0xd:
+    ble(reg1, reg2, reg3, imm);
     break;
   default:
     puts("undefined");

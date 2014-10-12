@@ -7,6 +7,8 @@
 void initialize_reg()
 {
   reg[0] = 0;
+  reg[STAC_POINTER] = 0x00100000;
+  reg[BASE_POINTER] = 0x00100000;
   reg[INST_POINTER] = 0;
 }
 
