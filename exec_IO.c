@@ -17,10 +17,14 @@
 void io_read(uint32_t rd)
 {
   char buf[READ_NUM+1];
-  int i;
+  char c;
+  int i = 0;
   uint32_t input = 0;
   
-  fgets(buf, READ_NUM+1, stdin);
+  while((c = fgetc(stdin)) != EOF && i<READ_NUM){
+    buf[i++] = c;
+  }
+  buf[READ_NUM] = '\0';
 
   if (READ_MODE == X_MODE) {
     for (i=0; i<READ_NUM; i++) {
