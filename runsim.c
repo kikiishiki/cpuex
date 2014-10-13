@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "runsim.h"
 #include "exec_alu.h"
+#include "exec_fpu.h"
 #include "exec_mem.h"
 #include "exec_jump.h"
 #include "exec_IO.h"
@@ -29,6 +30,13 @@ void runsim(uint32_t code)
     break;
   case 0x3:
     fneg(reg1, reg2);
+    break;
+    /* FPU */
+  case 0x4:
+    fadd(reg1, reg2, reg3);
+    break;
+  case 0x5:
+    fmul(reg1, reg2, reg3);
     break;
     /* MEMORY */
   case 0x8:

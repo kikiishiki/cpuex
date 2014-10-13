@@ -28,5 +28,7 @@ void shift(uint32_t rd, uint32_t rs, int16_t imm)
 
 void fneg(uint32_t rd, uint32_t rs)
 {
-  reg[rd] = reg[rs] ^ 0x80000000;
+  if (reg[rs] != 0) { // -0は回避
+    reg[rd] = reg[rs] ^ 0x80000000;
+  }
 }

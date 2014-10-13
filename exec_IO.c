@@ -16,12 +16,15 @@
 
 void io_read(uint32_t rd)
 {
+  /* 標準入力から1byteをread */
+
   char buf[READ_NUM+1];
   char c;
   int i = 0;
   uint32_t input = 0;
+  FILE* fin = stdin;
   
-  while((c = fgetc(stdin)) != EOF && i<READ_NUM){
+  while((c = fgetc(fin)) != EOF && i<READ_NUM){
     buf[i++] = c;
   }
   buf[READ_NUM] = '\0';
@@ -67,9 +70,11 @@ void io_read(uint32_t rd)
 
 void io_write(uint32_t rd)
 {
+  /* 標準出力へ1byteをwrite */
   char buf[WRITE_NUM+1];
   int i;
   uint32_t output, temp;
+  FILE* fout = stdout;
 
   output = reg[rd];
 
@@ -107,6 +112,6 @@ void io_write(uint32_t rd)
    
   buf[WRITE_NUM] = '\0';
 
-  fputs(buf, stdout);
+  fputs(buf, fout);
   
 }
