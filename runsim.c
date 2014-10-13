@@ -4,6 +4,7 @@
 #include "exec_alu.h"
 #include "exec_mem.h"
 #include "exec_jump.h"
+#include "exec_IO.h"
 #include "mem.h"
 
 void sprit_code(uint32_t code, uint32_t* opcode, uint32_t* reg1, uint32_t* reg2, uint32_t* reg3, int16_t* imm);
@@ -35,6 +36,13 @@ void runsim(uint32_t code)
     break;
   case 0x9:
     m_store(reg1, reg3, imm);
+    break;
+    /* IO */
+  case 0xa:
+    io_read(reg1);
+    break;
+  case 0xb:
+    io_write(reg1);
     break;
     /* Branch */
   case 0xc:
