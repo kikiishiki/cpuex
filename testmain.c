@@ -45,6 +45,10 @@ int main(void)
   }
 
   print_reg();
+
+  puts("");
+  printf("%x\n", (uint8_t)EOF);
+
   return 0;
 }
 

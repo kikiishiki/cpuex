@@ -21,7 +21,7 @@ void shift(uint32_t rd, uint32_t rs, int16_t imm)
   if (imm >= 0) {
     reg[rd] = reg[rs] << imm;
   } else {
-    reg[rd] = reg[rs] >> (-imm + 1);
+    reg[rd] = reg[rs] >> (-imm);
   }
 
 }
