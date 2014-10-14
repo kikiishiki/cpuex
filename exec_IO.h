@@ -5,6 +5,6 @@
 
 
 void io_read(uint32_t rd);
-void io_write(uint32_t rd);
+void io_write(uint32_t rs);
 
 #endif

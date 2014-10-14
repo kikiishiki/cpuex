@@ -43,14 +43,14 @@ void runsim(uint32_t code)
     m_load(reg1, reg3, imm);
     break;
   case 0x9:
-    m_store(reg1, reg3, imm);
+    m_store(reg2, reg3, imm);
     break;
     /* IO */
   case 0xa:
     io_read(reg1);
     break;
   case 0xb:
-    io_write(reg1);
+    io_write(reg2);
     break;
     /* Branch */
   case 0xc:

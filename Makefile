@@ -7,7 +7,7 @@ all: sim make_input
 test: testmain.o runsim.o $(EXEC) mem.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-sim: main.o runsim.o $(EXEC) mem.o
+sim: main.o runsim.o $(EXEC) mem.o flags.h
 	$(CC) $(CFLAGS) -o $@ $^
 
 make_input: make_input_file.o
