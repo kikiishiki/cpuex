@@ -26,7 +26,7 @@ void runsim(uint32_t code)
     sub(reg1, reg2, reg3);
     break;
   case 0x2:
-    shift(reg1, reg2, imm);
+    shift(reg1, reg2, reg3, imm);
     break;
   case 0x3:
     fneg(reg1, reg2);

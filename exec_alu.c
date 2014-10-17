@@ -15,13 +15,18 @@ void sub(uint32_t rd, uint32_t rs, uint32_t rt)
   reg[rd] = reg[rs] - reg[rt];
 }
 
-void shift(uint32_t rd, uint32_t rs, int16_t imm)
+void shift(uint32_t rd, uint32_t rs, uint32_t rt, int16_t imm)
 {
-  /* immの値が-32〜31をはみ出す場合についてはとりあえず無視 */
-  if (imm >= 0) {
+  int shift_;
+
+  shift_ = reg[rt] + imm;
+  /* immの値が-32〜32をはみ出す場合は0 */
+  if (0 <= shift_ && shift_ <= 32) {
     reg[rd] = reg[rs] << imm;
-  } else {
+  } else if (-32 <= shift_ && shift_ < 0) {
     reg[rd] = reg[rs] >> (-imm);
+  } else {
+    reg[rd] = 0;
   }
 
 }
