@@ -1,17 +1,17 @@
 CC = gcc
-CFLAGS = -Wall -O
-EXEC = exec_alu.o exec_fpu.o exec_mem.o exec_IO.o exec_jump.o
+CFLAGS = -Wall -O2
 
-all: sim make_input
+all: sim
 
-test: testmain.o runsim.o $(EXEC) mem.o
+sim: env.o util.o io.o runsim.o main.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-sim: main.o runsim.o $(EXEC) mem.o flags.h
-	$(CC) $(CFLAGS) -o $@ $^
-
-make_input: make_input_file.o
-	$(CC) $(CFLAGS) -o $@ $^
+env.o:    env.h
+util.o:   env.h util.h
+io.o:     env.h util.h io.h
+runsim.o: env.h util.h io.h runsim.h
+main.o:   env.h util.h io.h runsim.h
 
 clean:
-	rm -f *.o test sim make_input
+	rm -f *.o sim
+

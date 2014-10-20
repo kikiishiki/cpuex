@@ -1,89 +1,111 @@
+#include "env.h"
+#include "util.h"
+#include "io.h"
+#include "runsim.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
-#include "runsim.h"
-#include "mem.h"
-#include "flags.h"
+#define HALT  (0xc0000000 + (INST_PTR << 16))
 
-#define HALT  (0xc0000000 + (INST_POINTER << 16))
+char infile[128];
+long long inst_cnt = 0;
+int step_exec = 0;
+int breakpoint[MEM_SIZE];
 
-extern int step_fun();
+int step_fun();
+
+
+void parse_args(int argc, char *argv[]) {
+  int i;
+  for (i = 1; i < argc; ++i) {
+    if (argv[i][0] != '-') {
+      strcpy(infile, argv[i]);
+    } else if (argv[i][1] == 'r') {
+      switch (argv[i][2]) {
+        case 'r': read_mode = RAW;   break;
+        case 'i': read_mode = INT;   break;
+        case 'f': read_mode = FLOAT; break;
+        case 'x': read_mode = HEX;   break;
+        default: fprintf(stderr, "invalid option: %s\n", argv[i]); exit(1);
+      }
+    } else if (argv[i][1] == 'w') {
+      switch (argv[i][2]) {
+        case 'r': write_mode = RAW;   break;
+        case 'i': write_mode = INT;   break;
+        case 'f': write_mode = FLOAT; break;
+        case 'x': write_mode = HEX;   break;
+        default: fprintf(stderr, "invalid option: %s\n", argv[i]); exit(1);
+      }
+    } else if (strcmp(argv[i], "-debug") == 0) {
+      step_exec = 1;
+      for (i = 0; i < (1 << 20); ++i) breakpoint[i] = 0;
+    } else {
+      fprintf(stderr, "invalid option: %s\n", argv[i]);
+      exit(1);
+    }
+  }
+}
+
+void initialize() {
+  inst_cnt = 0;
+  read_pos = write_pos = 0;
+  initialize_env();
+}
+
+void simulate() {
+  initialize();
+  for (;;) {
+    if (mem[reg[INST_PTR]] == HALT) break;
+    ++inst_cnt;
+    if (breakpoint[reg[INST_PTR]] == 1)
+      step_exec = 1;
+    if (step_exec) while (step_fun());
+    runsim(mem[reg[INST_PTR]]);
+    reg[INST_PTR]++;
+  }
+}
+
 
 int main(int argc, char *argv[])
 {
   FILE *fp;
   char c;
-  int i, j = 0, halt_cnt = 0;
+  int i, j, halt_cnt = 0;
   uint32_t order;
 
-  if (argc > 1) {
-    if (!strcmp(argv[1], "-debug")) {
-      step_exec = 1;
-      for (i=0; i< (1<<20); i++) {
-	breakpoint[i] = 0;
-      }
-    }
-  }
+  strcpy(infile, "in.dat");
+  parse_args(argc, argv);
 
-  initialize_reg();
-
-  if ((fp = fopen("in.dat", "r")) == NULL) {
+  if ((fp = fopen(infile, "r")) == NULL) {
     perror("fopen");
-    exit(-1);
+    fprintf(stderr, "infile: %s\n", infile);
+    exit(1);
   }
 
-  while(1){
+  for (j = 0; ; ++j) {
     order = 0;
-
-    //  for (i=0; i<4 && (c = fgetc(fp)) != EOF; i++) {
-      /* issue: ffとEOFとの区別がつかない */
-    for (i=0; i<4; i++) { // とりあえず応急処置
+    for (i = 0; i < 4; i++) {
       c = fgetc(fp); // halt*3を読み込んだ時点で終わり
       order <<= 8;
       order += ((unsigned int)c & 0xff);
     }
-
-    memory[j] = order;
-
-    // if (c == EOF) break;
-
-    if (order == HALT) {
-      if (++halt_cnt == 3) break; 
-    } else {
-      halt_cnt = 0;
-    }
-
-    j++;
-
+    mem[j] = order;
+    if (order == HALT) { if (++halt_cnt == 3) break; }
+    else halt_cnt = 0;
   }
 
   fclose(fp);
-
-  while(reg[INST_POINTER] < j){
-
-    inst_cnt++;
-
-    if (breakpoint[reg[INST_POINTER]] == 1) {
-      step_exec = 1;
-    }
-    if (step_exec) {
-      while (step_fun());
-    }
-
-    runsim(memory[reg[INST_POINTER]]);
-    reg[INST_POINTER]++;
-
-    if (memory[reg[INST_POINTER]] == HALT) break;
-
-  }
   
-  printf("<executed %d instructions.>\n\n", inst_cnt);
-  print_reg();
+  simulate();
+  
+  fprintf(stderr, "<executed %lld instructions.>\n", inst_cnt);
+  print_env(stderr);
 
-  return 0; 
+  return 0;
 }
+
 
 int step_fun()
 {
@@ -93,7 +115,7 @@ int step_fun()
   int i;
   int addr;
   
-  printf("%d(0x%05x):\t0x%08x\n", inst_cnt, reg[INST_POINTER], memory[reg[INST_POINTER]]);
+  printf("%lld(0x%05x):\t0x%08x\n", inst_cnt, reg[INST_PTR], mem[reg[INST_PTR]]);
 
   printf("sim > ");
   
@@ -139,8 +161,8 @@ int step_fun()
     return 1;
   }
  
-  else if (!strcmp(tok, "pr") || !strcmp(tok, "print_reg")) {
-    print_reg();
+  else if (!strcmp(tok, "pe") || !strcmp(tok, "print_env")) {
+    print_env(stdout);
     return 1;
   }
  
@@ -151,22 +173,18 @@ int step_fun()
       return 1;
     }
     addr = atoi(tok);
-    printf("memory[0x%05x]:\t0x%08x\n", addr, memory[addr]);
+    printf("mem[0x%05x]: %11d (0x%08x)\n", addr, mem[addr], mem[addr]);
     return 1;
   }
  
   else if (!strcmp(tok, "re") || !strcmp(tok, "rerun")) {
-    initialize_reg();
-
-    for (i=1; i<STAC_POINTER; i++) {
-      reg[i] = 0;
-    }
-    inst_cnt = 1;
+    initialize_env();
+    inst_cnt = 0;
     return 1;
   }
  
   else if (!strcmp(tok, "h") || !strcmp(tok, "help")) {
-    printf("Commands\n----------\nr,         run             : プログラムを実行\ns,         step            : 1命令実行\nb [addr],  break [addr]    : memory[addr]にブレークポイントを設定\ndb [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除\npr,        print_reg       : レジスタの内容を表示\npm [addr], print_mem [addr]: memory[addr]の内容を表示(現時点で10進数のアスキーでの入力にのみ対応)\nre,        rerun           : 命令をはじめから実行\nh,         help            : ヘルプを表示\n");
+    printf("Commands\n----------\nr,         run             : プログラムを実行\ns,         step            : 1命令実行\nb [addr],  break [addr]    : memory[addr]にブレークポイントを設定\ndb [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除\npe,        print_env       : 環境を表示\npm [addr], print_mem [addr]: memory[addr]の内容を表示(現時点で10進数のアスキーでの入力にのみ対応)\nre,        rerun           : 命令をはじめから実行\nh,         help            : ヘルプを表示\n");
 
     return 1;
 
