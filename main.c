@@ -13,6 +13,8 @@ char infile[128];
 long long inst_cnt = 0;
 int step_exec = 0;
 int breakpoint[MEM_SIZE];
+enum Add_Mode { A_DEC, A_HEX };
+enum Add_Mode addr_mode = A_HEX;
 
 int step_fun();
 
@@ -106,6 +108,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+int read_address(char *addr);
 
 int step_fun()
 {
@@ -143,9 +146,11 @@ int step_fun()
       puts("Please enter the memory address.");
       return 1;
     }
-    addr = atoi(tok);
+    if ((addr = read_address(tok)) < 0) {
+      return 1;
+    }
     breakpoint[addr] = 1;
-    printf("Breakpoint %d\n", addr);
+    printf("Breakpoint %d (0x%05x)\n", addr, addr);
     return 1;
   }
  
@@ -155,9 +160,11 @@ int step_fun()
       puts("Please enter the memory address.");
       return 1;
     }
-    addr = atoi(tok);
+    if ((addr = read_address(tok)) < 0) {
+      return 1;
+    }
     breakpoint[addr] = 0;
-    printf("Delete Breakpoint %d\n", addr);
+    printf("Delete Breakpoint %d (0x%05x)\n", addr, addr);
     return 1;
   }
  
@@ -172,7 +179,9 @@ int step_fun()
       puts("Please enter the memory address.");
       return 1;
     }
-    addr = atoi(tok);
+    if ((addr = read_address(tok)) < 0) {
+      return 1;
+    }
     printf("mem[0x%05x]: %11d (0x%08x)\n", addr, mem[addr], mem[addr]);
     return 1;
   }
@@ -180,6 +189,25 @@ int step_fun()
   else if (!strcmp(tok, "re") || !strcmp(tok, "rerun")) {
     initialize_env();
     inst_cnt = 0;
+    return 1;
+  }
+
+  else if (!strcmp(tok, "addr_mode")) {
+    tok = strtok(NULL, " \t\n");
+    if (!tok) {
+      puts("Address input mode");
+      puts("----------");
+      puts("addr_mode -d  : 10進数で入力");
+      puts("addr_mode -x  : 16進数で入力");
+    } else if (!strcmp(tok, "-d")) {
+      puts("Address input mode: DEC");
+      addr_mode = A_DEC;
+    } else if (!strcmp(tok, "-x")) {
+      puts("Address input mode: HEX");
+      addr_mode = A_HEX;
+    } else {
+      puts("invalid option.");
+    }
     return 1;
   }
  
@@ -193,6 +221,7 @@ int step_fun()
     puts("pe,        print_env       : 環境を表示");
     puts("pm [addr], print_mem [addr]: memory[addr]の内容を表示");
     puts("re,        rerun           : 命令をはじめから実行");
+    puts("addr_mode                  : [addr]の入力形式を指定");
     puts("h,         help            : ヘルプを表示");
 
     return 1;
@@ -204,4 +233,34 @@ int step_fun()
   }
 }
 
+  int read_address(char *addr)
+{
+  int address = 0;
+  int i = 0;
 
+  if (addr_mode == A_DEC) {
+    address = atoi(addr);
+  } else if (addr_mode == A_HEX) {
+    while (addr[i] != '\0') {
+      address <<= 4;
+      if ('0' <= addr[i] && addr[i] <= '9') {
+	address += addr[i] - '0';
+      } else if ('a' <= addr[i] && addr[i] <= 'f') {
+	address += addr[i] - 'a' + 10;
+      } else if ('A' <= addr[i] && addr[i] <= 'F') {
+	address += addr[i] - 'A' + 10;
+      } else {
+	address >>= 4;
+	break;
+      }
+      i++;
+    }
+  }
+
+  if (address > MEM_SIZE) {
+    puts("The memory address is too big!");
+    address = -1;
+  }
+
+  return address;
+}
