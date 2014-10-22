@@ -184,7 +184,16 @@ int step_fun()
   }
  
   else if (!strcmp(tok, "h") || !strcmp(tok, "help")) {
-    printf("Commands\n----------\nr,         run             : プログラムを実行\ns,         step            : 1命令実行\nb [addr],  break [addr]    : memory[addr]にブレークポイントを設定\ndb [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除\npe,        print_env       : 環境を表示\npm [addr], print_mem [addr]: memory[addr]の内容を表示(現時点で10進数のアスキーでの入力にのみ対応)\nre,        rerun           : 命令をはじめから実行\nh,         help            : ヘルプを表示\n");
+    puts("Commands");
+    puts("----------");
+    puts("r,         run             : プログラムを実行");
+    puts("s,         step            : 1命令実行");
+    puts("b [addr],  break [addr]    : memory[addr]にブレークポイントを設定");
+    puts("db [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除");
+    puts("pe,        print_env       : 環境を表示");
+    puts("pm [addr], print_mem [addr]: memory[addr]の内容を表示");
+    puts("re,        rerun           : 命令をはじめから実行");
+    puts("h,         help            : ヘルプを表示");
 
     return 1;
 
