@@ -1,9 +1,11 @@
+#include "cnt.h"
 #include "env.h"
 #include "util.h"
 #include "io.h"
 #include "runsim.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 union Ui_f { uint32_t n; float f; };
 
@@ -27,6 +29,7 @@ void shift(uint32_t rd, uint32_t rs, uint32_t rt, int16_t imm) {
 
 void fneg(uint32_t rd, uint32_t rs) {
   if (reg[rs] != 0) reg[rd] = reg[rs] ^ 0x80000000; // -0は回避
+  else              reg[rd] = 0;
 }
 
 void fadd(uint32_t rd, uint32_t rs, uint32_t rt) {
@@ -44,6 +47,24 @@ void fmul(uint32_t rd, uint32_t rs, uint32_t rt) {
   ui_ft.n = reg[rt];
   ui_fd.f = ui_fs.f * ui_ft.f;
   if (ui_fd.n == 0x80000000) ui_fd.n = 0; // -0
+  reg[rd] = ui_fd.n;
+}
+
+void finv(uint32_t rd, uint32_t rs) {
+  /* 入力が0の際の処理などはしていない
+     出力がinfになっているかもしれない */
+  union Ui_f ui_fd, ui_fs;
+  ui_fs.n = reg[rs];
+  ui_fd.f = 1.0 / ui_fs.f;
+  if (ui_fd.n == 0x80000000) ui_fd.n = 0; // -0
+  reg[rd] = ui_fd.n;
+}
+
+void fsqrt(uint32_t rd, uint32_t rs) {
+  /* 入力が負の際の処理などはしていない */
+  union Ui_f ui_fd, ui_fs;
+  ui_fs.n = reg[rs];
+  ui_fd.f = sqrtf(ui_fs.f);
   reg[rd] = ui_fd.n;
 }
 
@@ -106,22 +127,24 @@ void runsim(uint32_t code)
 
   switch (opcode) {
     /* ALU */
-    case 0x0: add(reg1, reg2, reg3, imm);   break;
-    case 0x1: sub(reg1, reg2, reg3);        break;
-    case 0x2: shift(reg1, reg2, reg3, imm); break;
-    case 0x3: fneg(reg1, reg2);             break;
+    case 0x0: add(reg1, reg2, reg3, imm);   add_cnt++;   break;
+    case 0x1: sub(reg1, reg2, reg3);        sub_cnt++;   break;
+    case 0x2: shift(reg1, reg2, reg3, imm); shift_cnt++; break;
+    case 0x3: fneg(reg1, reg2);             fneg_cnt++;  break;
     /* FPU */
-    case 0x4: fadd(reg1, reg2, reg3); break;
-    case 0x5: fmul(reg1, reg2, reg3); break;
+    case 0x4: fadd(reg1, reg2, reg3); fadd_cnt++;  break;
+    case 0x5: fmul(reg1, reg2, reg3); fmul_cnt++;  break;
+    case 0x6: finv(reg1, reg2);       finv_cnt++;  break;
+    case 0x7: fsqrt(reg1, reg2);      fsqrt_cnt++; break;
     /* MEMORY */
-    case 0x8: m_load(reg1, reg3, imm);  break;
-    case 0x9: m_store(reg2, reg3, imm); break;
+    case 0x8: m_load(reg1, reg3, imm);  load_cnt++;  break;
+    case 0x9: m_store(reg2, reg3, imm); store_cnt++; break;
     /* IO */
-    case 0xa: io_read(reg1);  break;
-    case 0xb: io_write(reg2); break;
+    case 0xa: io_read(reg1);  read_cnt++;  break;
+    case 0xb: io_write(reg2); write_cnt++; break;
     /* Branch */
-    case 0xc: beq(reg1, reg2, reg3, imm); break;
-    case 0xd: ble(reg1, reg2, reg3, imm); break;
+    case 0xc: beq(reg1, reg2, reg3, imm); beq_cnt++; break;
+    case 0xd: ble(reg1, reg2, reg3, imm); ble_cnt++; break;
     /* Error */
     default:  error("invalid opcode: %08x", code); break;
   }

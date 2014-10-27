@@ -3,9 +3,10 @@ CFLAGS = -Wall -O2
 
 all: sim
 
-sim: env.o util.o io.o runsim.o main.o
-	$(CC) $(CFLAGS) -o $@ $^
+sim: cnt.o env.o util.o io.o runsim.o main.o
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
+cnt.o:    cnt.h
 env.o:    env.h
 util.o:   env.h util.h
 io.o:     env.h util.h io.h

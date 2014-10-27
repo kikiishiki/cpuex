@@ -1,3 +1,4 @@
+#include "cnt.h"
 #include "env.h"
 #include "util.h"
 #include "io.h"
@@ -10,7 +11,6 @@
 #define HALT  (0xc0000000 + (INST_PTR << 16))
 
 char infile[128];
-long long inst_cnt = 0;
 int step_exec = 0;
 int breakpoint[MEM_SIZE];
 enum Add_Mode { A_DEC, A_HEX };
@@ -51,7 +51,7 @@ void parse_args(int argc, char *argv[]) {
 }
 
 void initialize() {
-  inst_cnt = 0;
+  initialize_cnt();
   read_pos = write_pos = 0;
   initialize_env();
 }
@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
   
   fprintf(stderr, "<executed %lld instructions.>\n", inst_cnt);
   print_env(stderr);
+  print_cnt(stderr);
 
   return 0;
 }
@@ -116,7 +117,7 @@ int step_fun()
   char command[128];
   char *tok;
   int i;
-  int addr;
+  int addr, regi;
   
   printf("%lld(0x%05x):\t0x%08x\n", inst_cnt, reg[INST_PTR], mem[reg[INST_PTR]]);
 
@@ -172,6 +173,17 @@ int step_fun()
     print_env(stdout);
     return 1;
   }
+
+  else if (!strcmp(tok, "pr/f") || !strcmp(tok, "print_reg/f")) {
+    tok = strtok(NULL, " \t\n");
+    if (!tok) {
+      puts("Please enter the register to print.");
+      return 1;
+    }
+    regi = atoi(tok);
+    printf("$%2d = %f (0x%08x)\n", regi, (float)reg[regi], reg[regi]);
+    return 1;
+  }
  
   else if (!strcmp(tok, "pm") || !strcmp(tok, "print_mem")) {
     tok = strtok(NULL, " \t\n");
@@ -219,6 +231,7 @@ int step_fun()
     puts("b [addr],  break [addr]    : memory[addr]にブレークポイントを設定");
     puts("db [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除");
     puts("pe,        print_env       : 環境を表示");
+    puts("pr/f [i],  print_reg/f [i] : reg[i]の内容をfloatで表示");
     puts("pm [addr], print_mem [addr]: memory[addr]の内容を表示");
     puts("re,        rerun           : 命令をはじめから実行");
     puts("addr_mode                  : [addr]の入力形式を指定");
