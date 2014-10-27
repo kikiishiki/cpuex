@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
 }
 
 int read_address(char *addr);
+float to_float(uint32_t i);
 
 int step_fun()
 {
@@ -181,7 +182,7 @@ int step_fun()
       return 1;
     }
     regi = atoi(tok);
-    printf("$%2d = %f (0x%08x)\n", regi, (float)reg[regi], reg[regi]);
+    printf("$%2d = %f (0x%08x)\n", regi, to_float(reg[regi]), reg[regi]);
     return 1;
   }
  
@@ -200,7 +201,7 @@ int step_fun()
  
   else if (!strcmp(tok, "re") || !strcmp(tok, "rerun")) {
     initialize_env();
-    inst_cnt = 0;
+    initialize_cnt();
     return 1;
   }
 
@@ -246,7 +247,7 @@ int step_fun()
   }
 }
 
-  int read_address(char *addr)
+int read_address(char *addr)
 {
   int address = 0;
   int i = 0;
@@ -276,4 +277,12 @@ int step_fun()
   }
 
   return address;
+}
+
+float to_float(uint32_t i)
+{
+  union Ui_f_ { uint32_t n; float f; } ui_f_;
+
+  ui_f_.n = i;
+  return ui_f_.f;
 }
