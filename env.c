@@ -6,13 +6,17 @@ uint32_t reg[REG_NUM];
 uint32_t mem[MEM_SIZE];
 
 uint32_t max_stack = MEM_SIZE;
+uint32_t prog_size;
 
 void initialize_env() {
   int i;
   for (i = 0; i < REG_NUM; ++i) reg[i] = 0;
   reg[STAC_PTR] = MEM_SIZE;
   reg[BASE_PTR] = MEM_SIZE;
-  mem[HEAP_ADDR] = HEAP_ADDR + 1;
+  reg[INST_PTR] = HEAP_ADDR + 1;
+  mem[HEAP_ADDR] = HEAP_ADDR + prog_size + 1;
+  
+
 }
 
 void print_env(FILE *fp) {

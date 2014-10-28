@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 {
   FILE *fp;
   char c;
-  int i, j, halt_cnt = 0;
+  int i, halt_cnt = 0;
   uint32_t order;
 
   strcpy(infile, "in.dat");
@@ -86,14 +86,14 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  for (j = 0; ; ++j) {
+  for (prog_size = 1; ; ++prog_size) {
     order = 0;
     for (i = 0; i < 4; i++) {
       c = fgetc(fp); // halt*3を読み込んだ時点で終わり
       order <<= 8;
       order += ((unsigned int)c & 0xff);
     }
-    mem[j] = order;
+    mem[HEAP_ADDR + prog_size] = order;
     if (order == HALT) { if (++halt_cnt == 3) break; }
     else halt_cnt = 0;
   }

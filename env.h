@@ -13,6 +13,7 @@
 extern uint32_t reg[REG_NUM];
 extern uint32_t mem[MEM_SIZE];
 extern uint32_t max_stack;
+extern uint32_t prog_size;
 
 void initialize_env();
 void print_env();
