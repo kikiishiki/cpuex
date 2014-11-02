@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 
+extern uint32_t fmul();
 union Ui_f { uint32_t n; float f; };
 
 void add(uint32_t rd, uint32_t rs, uint32_t rt, int16_t imm) {
@@ -41,13 +42,8 @@ void fadd(uint32_t rd, uint32_t rs, uint32_t rt) {
   reg[rd] = ui_fd.n;
 }
 
-void fmul(uint32_t rd, uint32_t rs, uint32_t rt) {
-  union Ui_f ui_fd, ui_fs, ui_ft;
-  ui_fs.n = reg[rs];
-  ui_ft.n = reg[rt];
-  ui_fd.f = ui_fs.f * ui_ft.f;
-  if (ui_fd.n == 0x80000000) ui_fd.n = 0; // -0
-  reg[rd] = ui_fd.n;
+void fmul_(uint32_t rd, uint32_t rs, uint32_t rt) {
+  reg[rd] = fmul(reg[rs], reg[rt]);
 }
 
 void finv(uint32_t rd, uint32_t rs) {
@@ -133,7 +129,7 @@ void runsim(uint32_t code)
     case 0x3: fneg(reg1, reg2);             fneg_cnt++;  break;
     /* FPU */
     case 0x4: fadd(reg1, reg2, reg3); fadd_cnt++;  break;
-    case 0x5: fmul(reg1, reg2, reg3); fmul_cnt++;  break;
+    case 0x5: fmul_(reg1, reg2, reg3); fmul_cnt++;  break;
     case 0x6: finv(reg1, reg2);       finv_cnt++;  break;
     case 0x7: fsqrt(reg1, reg2);      fsqrt_cnt++; break;
     /* MEMORY */
