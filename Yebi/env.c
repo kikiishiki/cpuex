@@ -24,7 +24,7 @@ void print_env(FILE *fp) {
   for (i = 0; i < REG_NUM; i++)
     fprintf(fp, "$%2d = %11d (0x%08x)\n", i, reg[i], reg[i]);
   fprintf(fp, "heap: %11d (0x%08x)\n", mem[HEAP_ADDR], mem[HEAP_ADDR]);
-  fprintf(fp, "inst: %11d (0x%08x)\n", mem[INST_PTR], mem[INST_PTR]);
+  fprintf(fp, "inst: %11d (0x%08x)\n", mem[reg[INST_PTR]], mem[reg[INST_PTR]]);
   fprintf(fp, "max stack: %d (0x%08x)\n", max_stack, max_stack);
   fprintf(fp, "stack trace: %d", reg[INST_PTR]);
   for (bp = reg[BASE_PTR]; bp < MEM_SIZE; bp = mem[bp + 1])
