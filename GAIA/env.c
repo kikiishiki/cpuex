@@ -4,7 +4,6 @@
 
 uint32_t ireg[IREG_NUM];
 uint32_t freg[FREG_NUM];
-uint32_t creg;
 uint32_t prog_cnt;
 uint32_t mem[MEM_SIZE];
 uint64_t cache[CACHE_SIZE];

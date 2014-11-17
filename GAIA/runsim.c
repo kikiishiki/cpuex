@@ -13,117 +13,314 @@ extern uint32_t load();
 extern void store();
 union Ui_f { uint32_t n; float f; };
 
-void add(uint32_t rd, uint32_t rs, uint32_t rt, int16_t imm) {
+void add(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
   /* オーバーフローはとりあえず無視 */
-  ireg[rd] = ireg[rs] + ireg[rt] + imm;
+  ireg[rx] = ireg[ra] + ireg[rb] + imm;
 }
 
-void sub(uint32_t rd, uint32_t rs, uint32_t rt) {
-  ireg[rd] = ireg[rs] - ireg[rt];
+void sub(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+  ireg[rx] = ireg[ra] - ireg[rb] - imm;
 }
 
-void shift(uint32_t rd, uint32_t rs, uint32_t rt, int16_t imm) {
-  int x;
-  x = ireg[rt] + imm;
-  /* xの値が-32〜32をはみ出す場合は0 */
-       if (  0 <= x && x < 32) ireg[rd] = ireg[rs] << x;
-  else if (-32 <  x && x <  0) ireg[rd] = ireg[rs] >> (-x);
-  else                         ireg[rd] = 0;
+void shl(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+  ireg[rx] = ireg[ra] << (ireg[rb] + imm);
 }
 
-void and(uint32_t rd, uint32_t rs, uint32_t rt) {
-  ireg[rd] = ireg[rs] & ireg[rt];
+void shr(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+  ireg[rx] = ireg[ra] >> (ireg[rb] + imm);
 }
 
-void or(uint32_t rd, uint32_t rs, uint32_t rt) {
-  ireg[rd] = ireg[rs] | ireg[rt];
+void sar(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+  ireg[rx] = (ireg[ra] >> (ireg[rb] + imm)) | (0xffffffff << (32 - ireg[rb] - imm));
 }
 
-void not(uint32_t rd, uint32_t rs) {
-  ireg[rd] = ~(ireg[rs]);
+void and(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] & ireg[rb];
 }
 
-void xor(uint32_t rd, uint32_t rs, uint32_t rt) {
-  ireg[rd] = ireg[rs] ^ ireg[rt];
+void or(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] | ireg[rb];
 }
 
-void fneg(uint32_t rd, uint32_t rs) {
-  if (freg[rs] != 0) freg[rd] = freg[rs] ^ 0x80000000; // -0は回避
-  else               freg[rd] = 0;
+void not(uint32_t rx, uint32_t ra) {
+  ireg[rx] = ~(ireg[ra]);
 }
 
-void fadd(uint32_t rd, uint32_t rs, uint32_t rt) {
-  union Ui_f ui_fd, ui_fs, ui_ft;
-  ui_fs.n = freg[rs];
-  ui_ft.n = freg[rt];
-  ui_fd.f = ui_fs.f + ui_ft.f;
-  if (ui_fd.n == 0x80000000) ui_fd.n = 0; // -0
-  freg[rd] = ui_fd.n;
+void xor(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] ^ ireg[rb];
 }
 
-void fmul_(uint32_t rd, uint32_t rs, uint32_t rt) {
-  freg[rd] = fmul(freg[rs], freg[rt]);
+void cat(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = (ireg[ra] & 0xffff0000) | (ireg[rb] & 0x0000ffff);
 }
 
-void finv(uint32_t rd, uint32_t rs) {
-  /* 入力が0の際の処理などはしていない
+void cmpne(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] != ireg[rb] ? 0 : 1;
+}
+
+void cmpeq(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] == ireg[rb] ? 0 : 1;
+}
+
+void cmplt(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] < ireg[rb] ? 0 : 1;
+}
+
+void cmple(uint32_t rx, uint32_t ra, uint32_t rb) {
+  ireg[rx] = ireg[ra] <= ireg[rb] ? 0 : 1;
+}
+
+void ldl(uint32_t rx, uint32_t ra, uint16_t imm) {
+  ireg[rx] = (ireg[ra] & 0xffff0000) | ((uint32_t)imm & 0x0000ffff);
+}
+
+void ldh(uint32_t rx, uint32_t ra, uint16_t imm) {
+  ireg[rx] = (((uint32_t)imm << 16) & 0xffff0000) | (ireg[ra] & 0x0000ffff);
+}
+
+void fadd(uint32_t fx, uint32_t fa, uint32_t fb) {
+  union Ui_f ui_fx, ui_fa, ui_fb;
+  ui_fa.n = freg[fa];
+  ui_fb.n = freg[fb];
+  ui_fx.f = ui_fa.f + ui_fb.f;
+  if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
+  freg[fx] = ui_fx.n;
+}
+
+void fsub(uint32_t fx, uint32_t fa, uint32_t fb) {
+  union Ui_f ui_fx, ui_fa, ui_fb;
+  ui_fa.n = freg[fa];
+  ui_fb.n = freg[fb];
+  ui_fx.f = ui_fa.f - ui_fb.f;
+  if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
+  freg[fx] = ui_fx.n;
+}
+
+void fmul_(uint32_t fx, uint32_t fa, uint32_t fb) {
+  freg[fx] = fmul(freg[fa], freg[fb]);
+}
+
+void fdiv(uint32_t fx, uint32_t fa, uint32_t fb) {
+  /* 入力が0にあまりに近い際の処理などはしていない
      出力がinfになっているかもしれない */
-  union Ui_f ui_fd, ui_fs;
-  ui_fs.n = freg[rs];
-  ui_fd.f = 1.0 / ui_fs.f;
-  if (ui_fd.n == 0x80000000) ui_fd.n = 0; // -0
-  freg[rd] = ui_fd.n;
+  union Ui_f ui_fx, ui_fa, ui_fb;
+  ui_fa.n = freg[fa];
+  ui_fb.n = freg[fb];
+  if (ui_fb.n == 0)
+    error("fdiv: div by Zero");
+  ui_fx.f = ui_fa.f / ui_fb.f;
+  if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
+  freg[fx] = ui_fx.n;
 }
 
-void fsqrt(uint32_t rd, uint32_t rs) {
+void finv(uint32_t fx, uint32_t fa) {
+  /* 入力が0にあまりに近い際の処理などはしていない
+     出力がinfになっているかもしれない */
+  union Ui_f ui_fx, ui_fa;
+  ui_fa.n = freg[fa];
+  if (ui_fa.n == 0)
+    error("finv: div by Zero");
+  ui_fx.f = 1.0 / ui_fa.f;
+  if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
+  freg[fx] = ui_fx.n;
+}
+
+void fsqrt(uint32_t fx, uint32_t fa) {
   /* 入力が負の際の処理などはしていない */
-  union Ui_f ui_fd, ui_fs;
-  ui_fs.n = freg[rs];
-  ui_fd.f = sqrtf(ui_fs.f);
-  freg[rd] = ui_fd.n;
+  union Ui_f ui_fx, ui_fa;
+  ui_fa.n = freg[fa];
+  ui_fx.f = sqrtf(ui_fa.f);
+  freg[fx] = ui_fx.n;
 }
 
-void ld(uint32_t rd, uint32_t rb, int16_t imm) {
+void ftoi(uint32_t fx, uint32_t fa) {
+}
+
+void itof(uint32_t fx, uint32_t fa) {
+}
+
+void floor_(uint32_t fx, uint32_t fa) {
+}
+
+void ffma(uint32_t fx, uint32_t fa, uint32_t fb, uint32_t fc) {
+}
+
+void fcat(uint32_t fx, uint32_t fa, uint32_t fb) {
+  freg[fx] = (freg[fa] & 0xffff0000) | (freg[fb] & 0x0000ffff);
+}
+
+void fcmpne(uint32_t fx, uint32_t fa, uint32_t fb) {
+  freg[fx] = freg[fa] != freg[fb] ? 0 : 1;
+}
+
+void fcmpeq(uint32_t fx, uint32_t fa, uint32_t fb) {
+  freg[fx] = freg[fa] == freg[fb] ? 0 : 1;
+}
+
+void fcmplt(uint32_t fx, uint32_t fa, uint32_t fb) {
+  if (freg[fa] >> 31) {
+    if (freg[fb] >> 31) // fa<0, fb<0
+      freg[fx] = freg[fa] >= freg[fb] ? 0 : 1;
+    else                // fa<0, fb>0
+      freg[fx] = 1;
+  } else {
+    if (freg[fb] >> 31) // fa>0, fb<0
+      freg[fx] = 0;
+    else                // fa>0, fb>0
+      freg[fx] = freg[fa] < freg[fb] ? 0 : 1;
+  }
+}
+
+void fcmple(uint32_t fx, uint32_t fa, uint32_t fb) {
+  if (freg[fa] >> 31) {
+    if (freg[fb] >> 31) // fa<0, fb<0
+      freg[fx] = freg[fa] > freg[fb] ? 0 : 1;
+    else                // fa<0, fb>0
+      freg[fx] = 1;
+  } else {
+    if (freg[fb] >> 31) // fa>0, fb<0
+      freg[fx] = 0;
+    else                // fa>0, fb>0
+      freg[fx] = freg[fa] <= freg[fb] ? 0 : 1;
+  }
+}
+
+void fldl(uint32_t fx, uint32_t fa, uint16_t imm) {
+  freg[fx] = (freg[fa] & 0xffff0000) | ((uint32_t)imm & 0x0000ffff);
+}
+
+void fldh(uint32_t fx, uint32_t fa, uint16_t imm) {
+  freg[fx] = (((uint32_t)imm << 16) & 0xffff0000) | (freg[fa] & 0x0000ffff);
+}
+
+void ld(uint32_t rx, uint32_t ra, int16_t imm) {
   int32_t address;
-  address = ireg[rb] + imm;
+  address = ireg[ra] + imm;
   if (address < 0 || address >= MEM_SIZE)
     error("load: invalid address: %x\n", address);
-  ireg[rd] = load(address);
+  ireg[rx] = load(address);
 }
 
-void st(uint32_t rs, uint32_t rb, int16_t imm) {
+void st(uint32_t ra, uint32_t rb, int16_t imm) {
   int32_t address;
   address = ireg[rb] + imm;
   if (address < 0 || address >= MEM_SIZE)
     error("store: invalid address: %x\n", address);
-  store(address,ireg[rs]);
+  store(address,ireg[ra]);
 }
 
-void beq(uint32_t rs, uint32_t rt, uint32_t rb, int16_t imm) {
+void fld(uint32_t fx, uint32_t ra, int16_t imm) {
+  int32_t address;
+  address = ireg[ra] + imm;
+  if (address < 0 || address >= MEM_SIZE)
+    error("load: invalid address: %x\n", address);
+  freg[fx] = load(address);
+}
+
+void fst(uint32_t fa, uint32_t rb, int16_t imm) {
   int32_t address;
   address = ireg[rb] + imm;
+  if (address < 0 || address >= MEM_SIZE)
+    error("store: invalid address: %x\n", address);
+  store(address,freg[fa]);
+}
+
+void bne(uint32_t ra, uint32_t rb, int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
+  if (address < 0 || address >= MEM_SIZE)
+    error("bne: invalid address: %x\n", address);
+  if (ireg[ra] != ireg[rb])
+    prog_cnt = address - 1;
+}
+
+void beq(uint32_t ra, uint32_t rb, int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("beq: invalid address: %x\n", address);
-  if (ireg[rs] == ireg[rt])
+  if (ireg[ra] == ireg[rb])
     prog_cnt = address - 1;
 }
 
-void ble(uint32_t rs, uint32_t rt, uint32_t rb, int16_t imm) {
+void blt(uint32_t ra, uint32_t rb, int16_t disp) {
   int32_t address;
-  address = ireg[rb] + imm;
+  address = prog_cnt + disp;
+  if (address < 0 || address >= MEM_SIZE)
+    error("blt: invalid address: %x\n", address);
+  if (ireg[ra] < ireg[rb])
+    prog_cnt = address - 1;
+}
+
+void ble(uint32_t ra, uint32_t rb, int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("ble: invalid address: %x\n", address);
-  if ((int32_t)ireg[rs] <= (int32_t)ireg[rt])
+  if (ireg[ra] <= ireg[rb])
     prog_cnt = address - 1;
+}
+
+void fbne(uint32_t fa, uint32_t fb, int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
+  if (address < 0 || address >= MEM_SIZE)
+    error("fbne: invalid address: %x\n", address);
+  if (ireg[fa] != ireg[fb])
+    prog_cnt = address - 1;
+}
+
+void fbeq(uint32_t fa, uint32_t fb, int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
+  if (address < 0 || address >= MEM_SIZE)
+    error("beq: invalid address: %x\n", address);
+  if (ireg[fa] == ireg[fb])
+    prog_cnt = address - 1;
+}
+
+void fblt(uint32_t fa, uint32_t fb, int16_t disp) {
+}
+
+void fble(uint32_t fa, uint32_t fb, int16_t disp) {
+}
+
+void jl(int16_t disp) {
+  int32_t address;
+  address = prog_cnt + disp;
+  if (address < 0 || address >= MEM_SIZE)
+    error("jl: invalid address: %x\n", address);
+  ireg[31] = prog_cnt + 1;
+  prog_cnt = address - 1;
+}
+
+void jr() {
+  prog_cnt = ireg[31] - 1;
 }
 
 /* ここからrunsimの本体部分 */
-void split_code(uint32_t code, uint32_t* opcode, uint32_t* reg1, uint32_t* reg2, uint32_t* reg3, int16_t* imm) {
-  *opcode = code >> 28;
-  *reg1 = (code >> 24) & 0xf;
-  *reg2 = (code >> 20) & 0xf;
-  *reg3 = (code >> 16) & 0xf;
-  *imm  = code & 0xffff;
+void split_alu(uint32_t code, uint32_t* regx, uint32_t* rega, uint32_t* regb, int16_t* imm, uint32_t* tag) {
+  *regx = (code >> 22) & 0x1f;
+  *rega = (code >> 17) & 0x1f;
+  *regb = (code >> 12) & 0x1f;
+  *imm  = (code >> 4)  & 0xff;
+  *tag  = code & 0xf;
+}
+
+void split_fpu(uint32_t code, uint32_t* regx, uint32_t* rega, uint32_t* regb, uint32_t* regc, uint32_t* sign_mode, uint32_t* tag) {
+  *regx = (code >> 22) & 0x1f;
+  *rega = (code >> 17) & 0x1f;
+  *regb = (code >> 12) & 0x1f;
+  *regc = (code >> 7)  & 0x1f;
+  *sign_mode  = (code >> 4)  & 0x7;
+  *tag  = code & 0xf;
+}
+
+void split_mem(uint32_t code, uint32_t* rega, uint32_t* regb, uint32_t* pred, uint32_t* disp) { 
+  *rega = (code >> 22) & 0x1f;
+  *regb = (code >> 17) & 0x1f;
+  *pred  = (code >> 16) & 0x1;
+  *disp  = code & 0xffff;
 }
 
 void error_check()
@@ -136,37 +333,81 @@ void error_check()
 
 void runsim(uint32_t code)
 {
-  uint32_t opcode, reg1, reg2, reg3; // regx, rega, regb, regc, literal, sign_mode, tag, b_predic, disp;
+  uint32_t opcode, regx, rega, regb, regc, sign_mode, tag, pred, disp;
   int16_t imm;
 
-  //  opcode = code >> 28;
-  split_code(code, &opcode, &reg1, &reg2, &reg3, &imm);
+  opcode = code >> 27;
+
+  switch (opcode >> 2) {
+  case 0x0: split_alu(code, &regx, &rega, &regb, &imm, &tag); break;
+  case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &sign_mode, &tag); break;
+  default:  split_mem(code, &rega, &regb, &pred, &disp); break;
+  }
 
   switch (opcode) {
     /* ALU */
-    case 0x0:
-      //      split_alu(code, &regx, &rega, &regb, &literal, &tag);
-      //      switch (tag) {
-              add(reg1, reg2, reg3, imm);   add_cnt++;   break;
-    case 0x1: sub(reg1, reg2, reg3);        sub_cnt++;   break;
-    case 0x2: shift(reg1, reg2, reg3, imm); shift_cnt++; break;
-    case 0x3: fneg(reg1, reg2);             fneg_cnt++;  break;
+  case 0x00:
+  case 0x01:
+    switch (tag) {
+    case 0x0: add(regx, rega, regb, imm); add_cnt++;   break;
+    case 0x1: sub(regx, rega, regb, imm); sub_cnt++;   break;
+    case 0x2: shl(regx, rega, regb, imm); shl_cnt++;   break;
+    case 0x3: shr(regx, rega, regb, imm); shr_cnt++;   break;
+    case 0x4: sar(regx, rega, regb, imm); sar_cnt++;   break;
+    case 0x5: and(regx, rega, regb);      and_cnt++;   break;
+    case 0x6: or(regx, rega, regb);       or_cnt++;    break;
+    case 0x7: not(regx, rega);            not_cnt++;   break;
+    case 0x8: xor(regx, rega, regb);      xor_cnt++;   break;
+    case 0x9: cat(regx, rega, regb);      cat_cnt++;   break;
+    case 0xc: cmpne(regx, rega, regb);    cmpne_cnt++; break;
+    case 0xd: cmpeq(regx, rega, regb);    cmpeq_cnt++; break;
+    case 0xe: cmplt(regx, rega, regb);    cmplt_cnt++; break;
+    case 0xf: cmple(regx, rega, regb);    cmple_cnt++; break;
+    default:  error("invalid optag: %08x", tag);       break;
+    } break;
+  case 0x02: ldl(regx, rega, imm); ldl_cnt++; break;
+  case 0x03: ldh(regx, rega, imm); ldh_cnt++; break;
     /* FPU */
-    case 0x4: fadd(reg1, reg2, reg3); fadd_cnt++;  break;
-    case 0x5: fmul_(reg1, reg2, reg3); fmul_cnt++;  break;
-    case 0x6: finv(reg1, reg2);       finv_cnt++;  break;
-    case 0x7: fsqrt(reg1, reg2);      fsqrt_cnt++; break;
+  case 0x04: 
+    switch (tag) {
+    case 0x0: fadd(regx, rega, regb);   fadd_cnt++;  break;
+    case 0x1: fsub(regx, rega, regb);   fsub_cnt++;  break;
+    case 0x2: fmul_(regx, rega, regb);  fmul_cnt++;  break;
+    case 0x3: fdiv(regx, rega, regb);   fdiv_cnt++;  break;
+    case 0x4: finv(regx, rega);         finv_cnt++;  break;
+    case 0x5: fsqrt(regx, rega);        fsqrt_cnt++; break;
+    case 0x6: ftoi(regx, rega);         ftoi_cnt++;  break;
+    case 0x7: itof(regx, rega);         itof_cnt++;  break;
+    case 0x8: floor_(regx, rega);        floor_cnt++; break;
+    case 0x9: ffma(regx, rega, regb, regc); ffma_cnt++; break;
+    case 0xa: fcat(regx, rega, regb);   fcat_cnt++;  break;
+    case 0xc: fcmpne(regx, rega, regb); fcmpne_cnt++; break;
+    case 0xd: fcmpeq(regx, rega, regb); fcmpeq_cnt++; break;
+    case 0xe: fcmplt(regx, rega, regb); fcmplt_cnt++; break;
+    case 0xf: fcmple(regx, rega, regb); fcmple_cnt++; break;
+    default:  error("invalid optag: %08x", tag);       break;
+    } break; 
+  case 0x06: fldl(regx, rega, imm); fldl_cnt++; break;
+  case 0x07: fldh(regx, rega, imm); fldh_cnt++; break;
     /* MEMORY */
-    case 0x8: ld(reg1, reg3, imm); ld_cnt++; break;
-    case 0x9: st(reg2, reg3, imm); st_cnt++; break;
-    /* IO */
-    case 0xa: io_read(reg1);  read_cnt++;  break;
-    case 0xb: io_write(reg2); write_cnt++; break;
-    /* Branch */
-    case 0xc: beq(reg1, reg2, reg3, imm); beq_cnt++; break;
-    case 0xd: ble(reg1, reg2, reg3, imm); ble_cnt++; break;
+  case 0x08: ld(rega, regb, disp);  ld_cnt++;  break;
+  case 0x09: st(rega, regb, disp);  st_cnt++;  break;
+  case 0x0a: fld(rega, regb, disp); fld_cnt++; break;
+  case 0x0b: fst(rega, regb, disp); fst_cnt++; break;
+    /* BRANCH */
+  case 0x10: bne(rega, regb, disp);  bne_cnt++;  break;
+  case 0x11: beq(rega, regb, disp);  beq_cnt++;  break;
+  case 0x12: blt(rega, regb, disp);  blt_cnt++;  break;
+  case 0x13: ble(rega, regb, disp);  ble_cnt++;  break;
+  case 0x14: fbne(rega, regb, disp); fbne_cnt++; break;
+  case 0x15: fbeq(rega, regb, disp); fbeq_cnt++; break;
+  case 0x16: fblt(rega, regb, disp); fblt_cnt++; break;
+  case 0x17: fble(rega, regb, disp); fble_cnt++; break;
+    /* JUMP */
+  case 0x18: jl(disp); jl_cnt++; break;
+  case 0x19: jr();     jr_cnt++; break;
     /* Error */
-    default:  error("invalid opcode: %08x", code); break;
+  default:  error("invalid opcode: %08x", code); break;
   }
   
   error_check();

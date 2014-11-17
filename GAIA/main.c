@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define HALT  (0xc0000000 + (INST_PTR << 16))
+#define HALT  (0xc00f0000)
 
 char infile[128];
 int step_exec = 0;

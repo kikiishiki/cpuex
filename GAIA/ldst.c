@@ -1,4 +1,5 @@
 #include "env.h"
+#include "cnt.h"
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
@@ -13,8 +14,9 @@ uint32_t load(uint32_t address)
       break;
     }
   }
-  if (i == CACHE_SIZE) {
+  if (i == CACHE_SIZE) { // data doesn't exist
     data = mem[address];
+    miss_cnt++;
   }
   return data;
 }
@@ -31,7 +33,7 @@ void store(uint32_t address, uint32_t data)
       break;
     }
   }
-  if (i == CACHE_SIZE) {
+  if (i == CACHE_SIZE) { // data doesn't exist
     cache[rand() % CACHE_SIZE] = input;
   }
   mem[address] = data;

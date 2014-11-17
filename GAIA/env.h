@@ -14,7 +14,6 @@
 
 extern uint32_t ireg[IREG_NUM];
 extern uint32_t freg[FREG_NUM];
-extern uint32_t creg;
 extern uint32_t prog_cnt;
 extern uint32_t mem[MEM_SIZE];
 extern uint64_t cache[CACHE_SIZE];
