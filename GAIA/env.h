@@ -6,7 +6,7 @@
 #define IREG_NUM   32
 #define FREG_NUM   32 
 #define MEM_SIZE   (1 << 20)
-#define CACHE_SIZE (1 << 10)
+#define CACHE_SIZE (1 << 12)
 #define STAC_PTR   30
 #define BASE_PTR   31
 #define INST_PTR   32
