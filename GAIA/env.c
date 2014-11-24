@@ -23,12 +23,25 @@ void initialize_env() {
   
 }
 
+void print_float(FILE *fp, uint32_t target) {
+  union Utmp {
+    uint32_t n;
+    float f;
+  } utmp;
+  utmp.n = target;
+  fprintf(fp, "%11f", utmp.f);
+}
+
+
 void print_env(FILE *fp) {
   int i, bp;
   for (i = 0; i < IREG_NUM; i++)
-    fprintf(fp, "$r%2d = %11d (0x%08x)\n", i, ireg[i], ireg[i]);
-  for (i = 0; i < FREG_NUM; i++)
-    fprintf(fp, "$f%2d = %11d (0x%08x)\n", i, freg[i], freg[i]);
+    fprintf(fp, "r%-2d = %11d (0x%08x)\n", i, ireg[i], ireg[i]);
+  for (i = 0; i < FREG_NUM; i++) {
+    fprintf(fp, "f%-2d = ", i);
+    print_float(fp, freg[i]);
+    fprintf(fp, " (0x%08x)\n", freg[i]);
+  }
   fprintf(fp, "heap: %11d (0x%08x)\n", mem[HEAP_ADDR], mem[HEAP_ADDR]);
   fprintf(fp, "inst: %11d (0x%08x)\n", mem[prog_cnt], mem[prog_cnt]);
   fprintf(fp, "max stack: %d (0x%08x)\n", max_stack, max_stack);
