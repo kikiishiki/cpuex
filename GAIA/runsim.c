@@ -78,13 +78,23 @@ void ldh(uint32_t rx, uint32_t ra, uint16_t imm) {
   ireg[rx] = (((uint32_t)imm << 16) & 0xffff0000) | (ireg[ra] & 0x0000ffff);
 }
 
+int sign_mode = 0;
+uint32_t operate_sign_bit(uint32_t val) {
+  if (val != 0) {
+    if      (sign_mode == 1) val ^= 0x80000000;
+    else if (sign_mode == 2) val |= 0x80000000;
+    else if (sign_mode == 3) val &= 0x00000000;
+  }
+  return val;
+}
+
 void fadd(uint32_t fx, uint32_t fa, uint32_t fb) {
   union Ui_f ui_fx, ui_fa, ui_fb;
   ui_fa.n = freg[fa];
   ui_fb.n = freg[fb];
   ui_fx.f = ui_fa.f + ui_fb.f;
   if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
-  freg[fx] = ui_fx.n;
+  freg[fx] = operate_sign_bit(ui_fx.n);
 }
 
 void fsub(uint32_t fx, uint32_t fa, uint32_t fb) {
@@ -93,11 +103,11 @@ void fsub(uint32_t fx, uint32_t fa, uint32_t fb) {
   ui_fb.n = freg[fb];
   ui_fx.f = ui_fa.f - ui_fb.f;
   if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
-  freg[fx] = ui_fx.n;
+  freg[fx] = operate_sign_bit(ui_fx.n);
 }
 
 void fmul_(uint32_t fx, uint32_t fa, uint32_t fb) {
-  freg[fx] = fmul(freg[fa], freg[fb]);
+  freg[fx] = operate_sign_bit( fmul(freg[fa], freg[fb]) );
 }
 
 void fdiv(uint32_t fx, uint32_t fa, uint32_t fb) {
@@ -110,7 +120,7 @@ void fdiv(uint32_t fx, uint32_t fa, uint32_t fb) {
     error("fdiv: div by Zero");
   ui_fx.f = ui_fa.f / ui_fb.f;
   if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
-  freg[fx] = ui_fx.n;
+  freg[fx] = operate_sign_bit(ui_fx.n);
 }
 
 void finv(uint32_t fx, uint32_t fa) {
@@ -122,7 +132,7 @@ void finv(uint32_t fx, uint32_t fa) {
     error("finv: div by Zero");
   ui_fx.f = 1.0 / ui_fa.f;
   if (ui_fx.n == 0x80000000) ui_fx.n = 0; // -0
-  freg[fx] = ui_fx.n;
+  freg[fx] = operate_sign_bit(ui_fx.n);
 }
 
 void fsqrt(uint32_t fx, uint32_t fa) {
@@ -130,7 +140,7 @@ void fsqrt(uint32_t fx, uint32_t fa) {
   union Ui_f ui_fx, ui_fa;
   ui_fa.n = freg[fa];
   ui_fx.f = sqrtf(ui_fa.f);
-  freg[fx] = ui_fx.n;
+  freg[fx] = operate_sign_bit(ui_fx.n);
 }
 
 void ftoi(uint32_t fx, uint32_t fa) {
@@ -146,23 +156,23 @@ void ffma(uint32_t fx, uint32_t fa, uint32_t fb, uint32_t fc) {
 }
 
 void fcat(uint32_t fx, uint32_t fa, uint32_t fb) {
-  freg[fx] = (freg[fa] & 0xffff0000) | (freg[fb] & 0x0000ffff);
+  freg[fx] = operate_sign_bit( (freg[fa] & 0xffff0000) | (freg[fb] & 0x0000ffff) );
 }
 
 void fand(uint32_t fx, uint32_t fa, uint32_t fb) {
-  freg[fx] = freg[fa] & ireg[fb];
+  freg[fx] = operate_sign_bit( freg[fa] & ireg[fb] );
 }
 
 void f_or(uint32_t fx, uint32_t fa, uint32_t fb) {
-  freg[fx] = freg[fa] | freg[fb];
+  freg[fx] = operate_sign_bit( freg[fa] | freg[fb] );
 }
 
 void fxor(uint32_t fx, uint32_t fa, uint32_t fb) {
-  freg[fx] = freg[fa] ^ freg[fb];
+  freg[fx] = operate_sign_bit( freg[fa] ^ freg[fb] );
 }
 
 void fnot(uint32_t fx, uint32_t fa) {
-  freg[fx] = ~(freg[fa]);
+  freg[fx] = operate_sign_bit( ~(freg[fa]) );
 }
 
 void fcmpne(uint32_t fx, uint32_t fa, uint32_t fb) {
@@ -287,17 +297,17 @@ void fblt(uint32_t fa, uint32_t fb, int16_t disp) {
 void fble(uint32_t fa, uint32_t fb, int16_t disp) {
 }
 
-void jl(int16_t disp) {
+void jl(uint32_t rx, int16_t disp) {
   int32_t address;
   address = prog_cnt + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("jl: invalid address: %x\n", address);
-  ireg[31] = prog_cnt + 1;
+  ireg[rx] = prog_cnt + 1;
   prog_cnt = address - 1;
 }
 
-void jr() {
-  prog_cnt = ireg[31] - 1;
+void jr(uint32_t ra) {
+  prog_cnt = ireg[ra] - 1;
 }
 
 /* ここからrunsimの本体部分 */
@@ -313,12 +323,12 @@ void split_alu(uint32_t code, uint32_t opcode, uint32_t *regx, uint32_t *rega, u
   *tag  = code & 0xf;
 }
 
-void split_fpu(uint32_t code, uint32_t *regx, uint32_t *rega, uint32_t *regb, uint32_t *regc, uint32_t *sign_mode, uint32_t *tag) {
+void split_fpu(uint32_t code, uint32_t *regx, uint32_t *rega, uint32_t *regb, uint32_t *regc, uint32_t *s, uint32_t *tag) {
   *regx = (code >> 22) & 0x1f;
   *rega = (code >> 17) & 0x1f;
   *regb = (code >> 12) & 0x1f;
   *regc = (code >> 7)  & 0x1f;
-  *sign_mode  = (code >> 4)  & 0x7;
+  *s    = (code >> 4)  & 0x7;
   *tag  = code & 0xf;
 }
 
@@ -339,8 +349,8 @@ void error_check()
 
 void runsim(uint32_t code)
 {
-  uint32_t opcode, regx, rega, regb, regc, sign_mode, tag, pred, disp = 0;
-  int16_t imm;
+  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0, disp = 0;
+  int16_t imm = 0;
 
   opcode = code >> 27;
 
@@ -349,7 +359,7 @@ void runsim(uint32_t code)
   else {
     switch (opcode >> 2) {
     case 0x0: split_alu(code, opcode, &regx, &rega, &regb, &imm, &tag); break;
-    case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &sign_mode, &tag); break;
+    case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &s, &tag); break;
     default:  split_mem(code, &rega, &regb, &pred, &disp); break;
     }
   }
@@ -378,7 +388,8 @@ void runsim(uint32_t code)
   case 0x02: ldl(rega, regb, disp); ldl_cnt++; break;
   case 0x03: ldh(rega, regb, disp); ldh_cnt++; break;
     /* FPU */
-  case 0x04: 
+  case 0x04:
+    sign_mode = s;
     switch (tag) {
     case 0x00: fadd(regx, rega, regb);   fadd_cnt++;  break;
     case 0x01: fsub(regx, rega, regb);   fsub_cnt++;  break;
@@ -418,8 +429,8 @@ void runsim(uint32_t code)
   case 0x16: fblt(rega, regb, disp); fblt_cnt++; break;
   case 0x17: fble(rega, regb, disp); fble_cnt++; break;
     /* JUMP */
-  case 0x18: jl(disp); jl_cnt++; break;
-  case 0x19: jr();     jr_cnt++; break;
+  case 0x18: jl(rega, disp); jl_cnt++; break;
+  case 0x19: jr(rega);       jr_cnt++; break;
     /* Error */
   default:  error("invalid opcode: %08x", code); break;
   }

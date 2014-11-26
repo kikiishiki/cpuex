@@ -78,6 +78,10 @@ def try_parse_memaccess(operand):
         return True, try_parse_addr(m.group(1))
     return False, ''
 
+def parse_mnemonic(mnemonic):
+    s = re.split(r'^([^\.]*)', mnemonic)
+    return s[1], s[2]
+
 def check_operands_n(operands, n, m=-1):
     if len(operands) < n:
         error('too few operands')
@@ -90,12 +94,12 @@ def check_imm_range(imm, lo=-0x8000, hi=0x7fff):
 
 def ireg_num(reg):
     if reg not in iregs:
-        error('invalid syntax')
+        error('invalid syntax in ireg_num')
     return iregs[reg]
 
 def freg_num(reg):
     if reg not in fregs:
-        error('invalid syntax')
+        error('invalid syntax in freg_num')
     return fregs[reg]
 
 def mkop_alu(op, a0, a1, a2, imm, tag):
@@ -127,17 +131,14 @@ def mkop_mem(op, a0, a1, pred, disp):
     if op in [2,3,8,9,10,11,16,17,18,19,24,25]:
         a1 = ireg_num(a1)
     else:
-        a1 = freg_num(a0)
+        a1 = freg_num(a1)
     success, disp = parse_imm(disp)
     if not success:
-        error('invalid syntax in mkop_mem')
+        error('invalid syntax')
     check_imm_range(disp)
     head = chr((op << 3) + (a0 >> 2)) + chr(((a0 & 0x03) << 6) + (a1 << 1) + pred)
     tail = chr((disp >> 8) & 0xff) + chr(disp & 0xff)
     return head + tail
-
-    
-
 
 def parse(line):
     line = line.strip()
@@ -224,79 +225,79 @@ def on_ldh(pred, operands):
 
 def on_fadd(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 0)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 0)
 
 def on_fsub(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 1)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 1)
 
 def on_fmul(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 2)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 2)
 
 def on_fdiv(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 3)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 3)
 
 def on_finv(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 4)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 4)
 
 def on_fsqrt(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 5)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 5)
 
 def on_ftoi(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 6)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 6)
 
 def on_itof(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 7)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 7)
 
 def on_floor(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 8)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 8)
 
 def on_ffma(signmode, operands):
     check_operands_n(operands, 4)
-    return mkop(4, operands[0], operands[1], operands[2], operands[3], signmode, 9)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], operands[3], signmode, 9)
 
 def on_fcat(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 10)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 10)
 
 def on_fand(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 11)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 11)
 
 def on_for(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 12)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 12)
 
 def on_fxor(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 13)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 13)
 
 def on_fnot(signmode, operands):
     check_operands_n(operands, 2)
-    return mkop(4, operands[0], operands[1], 'f0', 'f0', signmode, 14)
+    return mkop_fpu(4, operands[0], operands[1], 'f0', 'f0', signmode, 14)
 
 def on_fcmpne(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 28)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 28)
 
 def on_fcmpeq(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 29)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 29)
 
 def on_fcmplt(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 30)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 30)
 
 def on_fcmple(signmode, operands):
     check_operands_n(operands, 3)
-    return mkop(4, operands[0], operands[1], operands[2], 'f0', signmode, 31)
+    return mkop_fpu(4, operands[0], operands[1], operands[2], 'f0', signmode, 31)
 
 def on_fldl(pred, operands):
     check_operands_n(operands, 3)
@@ -428,6 +429,12 @@ fpu_table = {
     'fcmple': on_fcmple,
     'fldl':   on_fldl,
     'fldh':   on_fldh
+}
+
+fpu_suffix = {
+    '.neg':      1,
+    '.abs':      2,
+    '.abs.neg':  3
 }
 
 mem_table = {
@@ -765,8 +772,9 @@ for line, filename, pos in lines1:
         i += 1
 for i, (line, filename, pos) in enumerate(lines2):
     mnemonic, operands = parse(line)
-    if mnemonic not in (all_table):
-        error('unknown mnemonic \'{}\''.format(mnemonic))
+    simple_mnemonic, suffix = parse_mnemonic(mnemonic)
+    if simple_mnemonic not in (all_table):
+        error('unknown mnemonic \'{}\''.format(simple_mnemonic))
     check_operands_n(operands, 1, 4)
     operands[-1:] = subst(operands[-1], i)
     lines3.append(('{} {}'.format(mnemonic, ', '.join(operands)), filename, pos))
@@ -784,10 +792,15 @@ if not args.o:
 with open(args.o, 'w') as f:
     for i, (line, filename, pos) in enumerate(lines3):
         mnemonic, operands = parse(line)
+        mnemonic, suffix = parse_mnemonic(mnemonic)
         if mnemonic in alu_table:
             byterepr = alu_table[mnemonic](0, operands)
         elif mnemonic in fpu_table:
-            byterepr = fpu_table[mnemonic](0, operands)
+            if suffix in fpu_suffix:
+                sign_mode = fpu_suffix.get(suffix)
+            else:
+                sign_mode = 0
+            byterepr = fpu_table[mnemonic](sign_mode, operands)
         elif mnemonic in mem_table:
             byterepr = mem_table[mnemonic](0, operands)
         if args.k:
