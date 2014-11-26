@@ -8,7 +8,6 @@ import argparse
 
 
 srcs = {'_main': {0: 'jl r31, main'}}
-#srcs = {}
 filename = ''
 library = 'libmincaml_.s'
 pos = 0
@@ -31,8 +30,12 @@ fregs = {}
 for i in range(0, 32):
     fregs['f' + str(i)] = i
 
+regs = {}
+regs.update(iregs)
+regs.update(fregs)
+
 def is_reg(operand):
-    return operand in iregs, fregs
+    return operand in regs
 
 def parse_imm(operand):
     try:
@@ -127,10 +130,10 @@ def mkop_mem(op, a0, a1, pred, disp):
         a1 = freg_num(a0)
     success, disp = parse_imm(disp)
     if not success:
-        error('invalid syntax')
+        error('invalid syntax in mkop_mem')
     check_imm_range(disp)
     head = chr((op << 3) + (a0 >> 2)) + chr(((a0 & 0x03) << 6) + (a1 << 1) + pred)
-    tail = chr(disp >> 8) + chr(disp & 0xff)
+    tail = chr((disp >> 8) & 0xff) + chr(disp & 0xff)
     return head + tail
 
     
@@ -444,28 +447,11 @@ mem_table = {
     'jr':     on_jr
 }
 
-all_table = alu_table
+all_table = {}
+all_table.update(alu_table)
 all_table.update(fpu_table)
 all_table.update(mem_table)
 
-# table = {
-#     'add':      on_add,
-#     'sub':      on_sub,
-#     'shift':    on_shift,
-#     'fneg':     on_fneg,
-#     'fadd':     on_fadd,
-#     'fmul':     on_fmul,
-#     'finv':     on_finv,
-#     'fsqrt':    on_fsqrt,
-#     'load':     on_load,
-#     'store':    on_store,
-#     'read':     on_read,
-#     'write':    on_write,
-#     'beq':      on_beq,
-#     'ble':      on_ble,
-#     '.int':     on_dot_int,
-#     '.float':   on_dot_float
-# }
 
 
 # ----------------------------------------------------------------------
@@ -497,16 +483,16 @@ def expand_add(operands):
         return ['add {}, {}, r0, {}'.format(operands[0], operands[1], operands[2])]
     error('invalid syntax')
 
-def expand_sub(operands):
-    check_operands_n(operands, 3)
-    success, imm = parse_imm(operands[2])
-    if success:
-        return ['add {}, {}, r0, {}'.format(operands[0], operands[1], str(-imm))]
-    return ['sub {}'.format(', '.join(operands))]
+# def expand_sub(operands):
+#     check_operands_n(operands, 4)
+#     success, imm = parse_imm(operands[2])
+#     if success:
+#         return ['add {}, {}, r0, {}'.format(operands[0], operands[1], str(-imm))]
+#     return ['sub {}'.format(', '.join(operands))]
 
-def expand_neg(operands):
-    check_operands_n(operands, 2)
-    return ['sub {}, r0, {}'.format(operands[0], operands[1])]
+# def expand_neg(operands):
+#     check_operands_n(operands, 2)
+#     return ['sub {}, r0, {}'.format(operands[0], operands[1])]
 
 # def expand_shift(operands):
 #     check_operands_n(operands, 3, 4)
@@ -630,8 +616,8 @@ macro_table = {
     'nop':      expand_nop,
     'mov':      expand_mov,
     'add':      expand_add,
-    'sub':      expand_sub,
-    'neg':      expand_neg,
+    # 'sub':      expand_sub,
+    # 'neg':      expand_neg,
     # 'shift':    expand_shift,
     # 'shl':      expand_shl,
     # 'shr':      expand_shr,
@@ -685,7 +671,7 @@ def subst(label, cur):
         error('label \'{}\' is not declared'.format(label))
     if filename in labels[label]:
         labels[label][filename][2] = True
-        return ['$ip', str(labels[label][filename][0] - cur)]
+        return [str(labels[label][filename][0] - cur)]
     else:
         decl = ''
         for key in labels[label]:
@@ -696,7 +682,7 @@ def subst(label, cur):
         if not decl:
             error('label \'{}\' is not declared'.format(label))
         labels[label][decl][2] = True
-        return ['$ip', str(labels[label][decl][0] - cur)]
+        return [str(labels[label][decl][0] - cur)]
 
 def warn_unused_label(label):
     if not labels[label][filename][2] and not (filename == library and labels[label][filename][1]):
@@ -738,9 +724,7 @@ if os.path.isfile(library) and library not in args.inputs:
 library = re.sub(r'.*[/\\]', '', library)
 
 # 0. preprocess
-#lines0 = [('nop', '', 0), ('jl r31, main', '_main', 0)]
-#lines0 = [('nop', '', 0)]
-lines0 = []
+lines0 = [('jl r31, main', '_main', 0)]                     
 for filename in args.inputs:
     with open(filename, 'r') as f:
         filename = re.sub(r'.*[/\\]', '', filename)

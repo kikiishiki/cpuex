@@ -344,10 +344,14 @@ void runsim(uint32_t code)
 
   opcode = code >> 27;
 
-  switch (opcode >> 2) {
-  case 0x0: split_alu(code, opcode, &regx, &rega, &regb, &imm, &tag); break;
-  case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &sign_mode, &tag); break;
-  default:  split_mem(code, &rega, &regb, &pred, &disp); break;
+  if (opcode == 0x2 || opcode == 0x3 || opcode == 0x6 || opcode == 0x7)
+    split_mem(code, &rega, &regb, &pred, &disp);
+  else {
+    switch (opcode >> 2) {
+    case 0x0: split_alu(code, opcode, &regx, &rega, &regb, &imm, &tag); break;
+    case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &sign_mode, &tag); break;
+    default:  split_mem(code, &rega, &regb, &pred, &disp); break;
+    }
   }
 
   switch (opcode) {
@@ -371,8 +375,8 @@ void runsim(uint32_t code)
     case 0xf: cmple(regx, rega, regb);    cmple_cnt++; break;
     default:  error("invalid optag: %08x", tag);       break;
     } break;
-  case 0x02: ldl(regx, rega, imm); ldl_cnt++; break;
-  case 0x03: ldh(regx, rega, imm); ldh_cnt++; break;
+  case 0x02: ldl(rega, regb, disp); ldl_cnt++; break;
+  case 0x03: ldh(rega, regb, disp); ldh_cnt++; break;
     /* FPU */
   case 0x04: 
     switch (tag) {
@@ -397,8 +401,8 @@ void runsim(uint32_t code)
     case 0x1f: fcmple(regx, rega, regb); fcmple_cnt++; break;
     default:  error("invalid optag: %08x", tag);       break;
     } break; 
-  case 0x06: fldl(regx, rega, imm); fldl_cnt++; break;
-  case 0x07: fldh(regx, rega, imm); fldh_cnt++; break;
+  case 0x06: fldl(rega, regb, disp); fldl_cnt++; break;
+  case 0x07: fldh(rega, regb, disp); fldh_cnt++; break;
     /* MEMORY */
   case 0x08: ld(rega, regb, disp);  ld_cnt++;  break;
   case 0x09: st(rega, regb, disp);  st_cnt++;  break;

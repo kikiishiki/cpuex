@@ -9,7 +9,6 @@
 #define CACHE_SIZE (1 << 12)
 #define STAC_PTR   30
 #define BASE_PTR   31
-#define INST_PTR   32
 #define HEAP_ADDR  0x4000
 
 extern uint32_t ireg[IREG_NUM];
