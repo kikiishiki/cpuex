@@ -117,7 +117,7 @@ int step_fun()
   char command[128];
   char *tok;
   int i;
-  int addr, regi;
+  int addr;
   
   printf("%lld(0x%05x):\t0x%08x\n", inst_cnt, prog_cnt, mem[prog_cnt]);
 
@@ -150,8 +150,8 @@ int step_fun()
     if ((addr = read_address(tok)) < 0) {
       return 1;
     }
-    breakpoint[addr] = 1;
-    printf("Breakpoint %d (0x%05x)\n", addr, addr);
+    breakpoint[HEAP_ADDR + addr] = 1;
+    printf("Breakpoint %d (0x%05x)\n", HEAP_ADDR + addr, addr);
     return 1;
   }
  
@@ -164,8 +164,8 @@ int step_fun()
     if ((addr = read_address(tok)) < 0) {
       return 1;
     }
-    breakpoint[addr] = 0;
-    printf("Delete Breakpoint %d (0x%05x)\n", addr, addr);
+    breakpoint[HEAP_ADDR + addr] = 0;
+    printf("Delete Breakpoint %d (0x%05x)\n", HEAP_ADDR + addr, addr);
     return 1;
   }
  
@@ -173,18 +173,7 @@ int step_fun()
     print_env(stdout);
     return 1;
   }
-
-  else if (!strcmp(tok, "pr/f") || !strcmp(tok, "print_reg/f")) {
-    tok = strtok(NULL, " \t\n");
-    if (!tok) {
-      puts("Please enter the register to print.");
-      return 1;
-    }
-    regi = atoi(tok);
-    printf("$%2d = %f (0x%08x)\n", regi, to_float(ireg[regi]), ireg[regi]);
-    return 1;
-  }
- 
+  
   else if (!strcmp(tok, "pm") || !strcmp(tok, "print_mem")) {
     tok = strtok(NULL, " \t\n");
     if (!tok) {
@@ -197,7 +186,12 @@ int step_fun()
     printf("mem[0x%05x]: %11d (0x%08x)\n", addr, mem[addr], mem[addr]);
     return 1;
   }
- 
+
+  else if (!strcmp(tok, "pc") || !strcmp(tok, "print_cnt")) {
+    print_cnt(stdout);
+    return 1;
+  }
+
   else if (!strcmp(tok, "re") || !strcmp(tok, "rerun")) {
     initialize_env();
     initialize_cnt();
@@ -231,8 +225,8 @@ int step_fun()
     puts("b [addr],  break [addr]    : memory[addr]にブレークポイントを設定");
     puts("db [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除");
     puts("pe,        print_env       : 環境を表示");
-    puts("pr/f [i],  print_reg/f [i] : reg[i]の内容をfloatで表示");
     puts("pm [addr], print_mem [addr]: memory[addr]の内容を表示");
+    puts("pc,        print_cnt       : 各命令の実行回数を表示");
     puts("re,        rerun           : 命令をはじめから実行");
     puts("addr_mode                  : [addr]の入力形式を指定");
     puts("h,         help            : ヘルプを表示");

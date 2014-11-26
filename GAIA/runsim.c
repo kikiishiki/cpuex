@@ -368,69 +368,71 @@ void runsim(uint32_t code)
     /* ALU */
   case 0x00:
   case 0x01:
+    alu_cnt[tag]++;
     switch (tag) {
-    case 0x0: add(regx, rega, regb, imm); add_cnt++;   break;
-    case 0x1: sub(regx, rega, regb, imm); sub_cnt++;   break;
-    case 0x2: shl(regx, rega, regb, imm); shl_cnt++;   break;
-    case 0x3: shr(regx, rega, regb, imm); shr_cnt++;   break;
-    case 0x4: sar(regx, rega, regb, imm); sar_cnt++;   break;
-    case 0x5: and(regx, rega, regb);      and_cnt++;   break;
-    case 0x6: or(regx, rega, regb);       or_cnt++;    break;
-    case 0x7: not(regx, rega);            not_cnt++;   break;
-    case 0x8: xor(regx, rega, regb);      xor_cnt++;   break;
-    case 0x9: cat(regx, rega, regb);      cat_cnt++;   break;
-    case 0xc: cmpne(regx, rega, regb);    cmpne_cnt++; break;
-    case 0xd: cmpeq(regx, rega, regb);    cmpeq_cnt++; break;
-    case 0xe: cmplt(regx, rega, regb);    cmplt_cnt++; break;
-    case 0xf: cmple(regx, rega, regb);    cmple_cnt++; break;
+    case 0x0: add(regx, rega, regb, imm); break;
+    case 0x1: sub(regx, rega, regb, imm); break;
+    case 0x2: shl(regx, rega, regb, imm); break;
+    case 0x3: shr(regx, rega, regb, imm); break;
+    case 0x4: sar(regx, rega, regb, imm); break;
+    case 0x5: and(regx, rega, regb);      break;
+    case 0x6: or(regx, rega, regb);       break;
+    case 0x7: not(regx, rega);            break;
+    case 0x8: xor(regx, rega, regb);      break;
+    case 0x9: cat(regx, rega, regb);      break;
+    case 0xc: cmpne(regx, rega, regb);    break;
+    case 0xd: cmpeq(regx, rega, regb);    break;
+    case 0xe: cmplt(regx, rega, regb);    break;
+    case 0xf: cmple(regx, rega, regb);    break;
     default:  error("invalid optag: %08x", tag);       break;
     } break;
-  case 0x02: ldl(rega, regb, disp); ldl_cnt++; break;
-  case 0x03: ldh(rega, regb, disp); ldh_cnt++; break;
+  case 0x02: ldl(rega, regb, disp); alu_cnt[16]++; break;
+  case 0x03: ldh(rega, regb, disp); alu_cnt[17]++; break;
     /* FPU */
   case 0x04:
     sign_mode = s;
+    fpu_cnt[tag]++;
     switch (tag) {
-    case 0x00: fadd(regx, rega, regb);   fadd_cnt++;  break;
-    case 0x01: fsub(regx, rega, regb);   fsub_cnt++;  break;
-    case 0x02: fmul_(regx, rega, regb);  fmul_cnt++;  break;
-    case 0x03: fdiv(regx, rega, regb);   fdiv_cnt++;  break;
-    case 0x04: finv(regx, rega);         finv_cnt++;  break;
-    case 0x05: fsqrt(regx, rega);        fsqrt_cnt++; break;
-    case 0x06: ftoi(regx, rega);         ftoi_cnt++;  break;
-    case 0x07: itof(regx, rega);         itof_cnt++;  break;
-    case 0x08: floor_(regx, rega);       floor_cnt++; break;
-    case 0x09: ffma(regx, rega, regb, regc); ffma_cnt++; break;
-    case 0x0a: fcat(regx, rega, regb);   fcat_cnt++;  break;
-    case 0x0b: fand(regx, rega, regb);   fand_cnt++;  break;
-    case 0x0c: f_or(regx, rega, regb);   for_cnt++;   break;
-    case 0x0d: fxor(regx, rega, regb);   fxor_cnt++;  break;
-    case 0x0e: fnot(regx, rega);         fnot_cnt++;  break;
-    case 0x1c: fcmpne(regx, rega, regb); fcmpne_cnt++; break;
-    case 0x1d: fcmpeq(regx, rega, regb); fcmpeq_cnt++; break;
-    case 0x1e: fcmplt(regx, rega, regb); fcmplt_cnt++; break;
-    case 0x1f: fcmple(regx, rega, regb); fcmple_cnt++; break;
+    case 0x00: fadd(regx, rega, regb);       break;
+    case 0x01: fsub(regx, rega, regb);       break;
+    case 0x02: fmul_(regx, rega, regb);      break;
+    case 0x03: fdiv(regx, rega, regb);       break;
+    case 0x04: finv(regx, rega);             break;
+    case 0x05: fsqrt(regx, rega);            break;
+    case 0x06: ftoi(regx, rega);             break;
+    case 0x07: itof(regx, rega);             break;
+    case 0x08: floor_(regx, rega);           break;
+    case 0x09: ffma(regx, rega, regb, regc); break;
+    case 0x0a: fcat(regx, rega, regb);       break;
+    case 0x0b: fand(regx, rega, regb);       break;
+    case 0x0c: f_or(regx, rega, regb);       break;
+    case 0x0d: fxor(regx, rega, regb);       break;
+    case 0x0e: fnot(regx, rega);             break;
+    case 0x1c: fcmpne(regx, rega, regb);     break;
+    case 0x1d: fcmpeq(regx, rega, regb);     break;
+    case 0x1e: fcmplt(regx, rega, regb);     break;
+    case 0x1f: fcmple(regx, rega, regb);     break;
     default:  error("invalid optag: %08x", tag);       break;
     } break; 
-  case 0x06: fldl(rega, regb, disp); fldl_cnt++; break;
-  case 0x07: fldh(rega, regb, disp); fldh_cnt++; break;
+  case 0x06: fldl(rega, regb, disp); fpu_cnt[32]++; break;
+  case 0x07: fldh(rega, regb, disp); fpu_cnt[33]++; break;
     /* MEMORY */
   case 0x08: ld(rega, regb, disp);  ld_cnt++;  break;
   case 0x09: st(rega, regb, disp);  st_cnt++;  break;
   case 0x0a: fld(rega, regb, disp); fld_cnt++; break;
   case 0x0b: fst(rega, regb, disp); fst_cnt++; break;
     /* BRANCH */
-  case 0x10: bne(rega, regb, disp);  bne_cnt++;  break;
-  case 0x11: beq(rega, regb, disp);  beq_cnt++;  break;
-  case 0x12: blt(rega, regb, disp);  blt_cnt++;  break;
-  case 0x13: ble(rega, regb, disp);  ble_cnt++;  break;
-  case 0x14: fbne(rega, regb, disp); fbne_cnt++; break;
-  case 0x15: fbeq(rega, regb, disp); fbeq_cnt++; break;
-  case 0x16: fblt(rega, regb, disp); fblt_cnt++; break;
-  case 0x17: fble(rega, regb, disp); fble_cnt++; break;
+  case 0x10: bne(rega, regb, disp);  jump_cnt[0]++;  break;
+  case 0x11: beq(rega, regb, disp);  jump_cnt[1]++;  break;
+  case 0x12: blt(rega, regb, disp);  jump_cnt[2]++;  break;
+  case 0x13: ble(rega, regb, disp);  jump_cnt[3]++;  break;
+  case 0x14: fbne(rega, regb, disp); jump_cnt[4]++;  break;
+  case 0x15: fbeq(rega, regb, disp); jump_cnt[5]++;  break;
+  case 0x16: fblt(rega, regb, disp); jump_cnt[6]++;  break;
+  case 0x17: fble(rega, regb, disp); jump_cnt[7]++;  break;
     /* JUMP */
-  case 0x18: jl(rega, disp); jl_cnt++; break;
-  case 0x19: jr(rega);       jr_cnt++; break;
+  case 0x18: jl(rega, disp); jump_cnt[8]++; break;
+  case 0x19: jr(rega);       jump_cnt[9]++; break;
     /* Error */
   default:  error("invalid opcode: %08x", code); break;
   }
