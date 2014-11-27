@@ -79,7 +79,7 @@ def try_parse_memaccess(operand):
     return False, ''
 
 def parse_mnemonic(mnemonic):
-    s = re.split(r'^([^\.]*)', mnemonic)
+    s = re.split(r'^([^+-\.]*)', mnemonic)
     return s[1], s[2]
 
 def check_operands_n(operands, n, m=-1):
@@ -431,12 +431,6 @@ fpu_table = {
     'fldh':   on_fldh
 }
 
-fpu_suffix = {
-    '.neg':      1,
-    '.abs':      2,
-    '.abs.neg':  3
-}
-
 mem_table = {
     'ld':     on_ld,
     'st':     on_st,
@@ -459,7 +453,29 @@ all_table.update(alu_table)
 all_table.update(fpu_table)
 all_table.update(mem_table)
 
+alu_suffix = {
+    '':          0,
+    '.s':        0,
+    '.u':        1
+}
 
+fpu_suffix = {
+    '':          0,
+    '.neg':      1,
+    '.abs':      2,
+    '.abs.neg':  3
+}
+
+mem_suffix = {
+    '':          0,
+    '-':         0,
+    '+':         1
+}
+
+all_suffix = {}
+all_suffix.update(alu_suffix)
+all_suffix.update(fpu_suffix)
+all_suffix.update(mem_suffix)
 
 # ----------------------------------------------------------------------
 #       macro definitions
@@ -773,8 +789,10 @@ for line, filename, pos in lines1:
 for i, (line, filename, pos) in enumerate(lines2):
     mnemonic, operands = parse(line)
     simple_mnemonic, suffix = parse_mnemonic(mnemonic)
-    if simple_mnemonic not in (all_table):
+    if simple_mnemonic not in all_table:
         error('unknown mnemonic \'{}\''.format(simple_mnemonic))
+    if suffix not in all_suffix:
+        error('unknown suffix \'{}\''.format(suffix))
     check_operands_n(operands, 1, 4)
     operands[-1:] = subst(operands[-1], i)
     lines3.append(('{} {}'.format(mnemonic, ', '.join(operands)), filename, pos))
@@ -794,15 +812,23 @@ with open(args.o, 'w') as f:
         mnemonic, operands = parse(line)
         mnemonic, suffix = parse_mnemonic(mnemonic)
         if mnemonic in alu_table:
-            byterepr = alu_table[mnemonic](0, operands)
+            if suffix in alu_suffix:
+                opcode = alu_suffix.get(suffix)
+                byterepr = alu_table[mnemonic](opcode, operands)
+            else:
+                error('invalid syntax')
         elif mnemonic in fpu_table:
             if suffix in fpu_suffix:
                 sign_mode = fpu_suffix.get(suffix)
+                byterepr = fpu_table[mnemonic](sign_mode, operands)
             else:
-                sign_mode = 0
-            byterepr = fpu_table[mnemonic](sign_mode, operands)
+                error('invalid syntax')
         elif mnemonic in mem_table:
-            byterepr = mem_table[mnemonic](0, operands)
+            if suffix in mem_suffix:
+                pred = mem_suffix.get(suffix)
+                byterepr = mem_table[mnemonic](pred, operands)
+            else:
+                error('invalid syntax')
         if args.k:
             f.write("{} => x\"{}\",\n".format(i, ''.join('{:02x}'.format(ord(x)) for x in byterepr)))
         elif args.a:
