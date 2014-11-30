@@ -6,6 +6,7 @@
 #include "runsim.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 
 extern uint32_t fmul();
@@ -13,24 +14,24 @@ extern uint32_t load();
 extern void store();
 union Ui_f { uint32_t n; float f; };
 
-void add(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+void add(uint32_t rx, uint32_t ra, uint32_t rb, int16_t imm) {
   /* オーバーフローはとりあえず無視 */
   ireg[rx] = ireg[ra] + ireg[rb] + imm;
 }
 
-void sub(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+void sub(uint32_t rx, uint32_t ra, uint32_t rb, int16_t imm) {
   ireg[rx] = ireg[ra] - ireg[rb] - imm;
 }
 
-void shl(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+void shl(uint32_t rx, uint32_t ra, uint32_t rb, int16_t imm) {
   ireg[rx] = ireg[ra] << (ireg[rb] + imm);
 }
 
-void shr(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+void shr(uint32_t rx, uint32_t ra, uint32_t rb, int16_t imm) {
   ireg[rx] = ireg[ra] >> (ireg[rb] + imm);
 }
 
-void sar(uint32_t rx, uint32_t ra, uint32_t rb, uint16_t imm) {
+void sar(uint32_t rx, uint32_t ra, uint32_t rb, int16_t imm) {
   ireg[rx] = (ireg[ra] >> (ireg[rb] + imm)) | (0xffffffff << (32 - ireg[rb] - imm));
 }
 
@@ -70,11 +71,11 @@ void cmple(uint32_t rx, uint32_t ra, uint32_t rb) {
   ireg[rx] = ireg[ra] <= ireg[rb] ? -1 : 0;
 }
 
-void ldl(uint32_t rx, uint32_t ra, uint16_t imm) {
+void ldl(uint32_t rx, uint32_t ra, int16_t imm) {
   ireg[rx] = (ireg[ra] & 0xffff0000) | ((uint32_t)imm & 0x0000ffff);
 }
 
-void ldh(uint32_t rx, uint32_t ra, uint16_t imm) {
+void ldh(uint32_t rx, uint32_t ra, int16_t imm) {
   ireg[rx] = (((uint32_t)imm << 16) & 0xffff0000) | (ireg[ra] & 0x0000ffff);
 }
 
@@ -197,11 +198,11 @@ void fcmple(uint32_t fx, uint32_t fa, uint32_t fb) {
   freg[fx] = ui_fa.f <= ui_fb.f ? -1 : 0;
 }
 
-void fldl(uint32_t fx, uint32_t fa, uint16_t imm) {
+void fldl(uint32_t fx, uint32_t fa, int16_t imm) {
   freg[fx] = (freg[fa] & 0xffff0000) | ((uint32_t)imm & 0x0000ffff);
 }
 
-void fldh(uint32_t fx, uint32_t fa, uint16_t imm) {
+void fldh(uint32_t fx, uint32_t fa, int16_t imm) {
   freg[fx] = (((uint32_t)imm << 16) & 0xffff0000) | (freg[fa] & 0x0000ffff);
 }
 
@@ -316,10 +317,10 @@ void split_alu(uint32_t code, uint32_t opcode, uint32_t *regx, uint32_t *rega, u
   *rega = (code >> 17) & 0x1f;
   *regb = (code >> 12) & 0x1f;
   *imm  = (code >> 4)  & 0xff;
-  if (opcode == 0)
-    *imm &= 0x00ff; // 符号拡張なし
-  else if ((*imm >> 7) == 1)
+  if (opcode == 0 && (*imm >> 7) == 1)
     *imm |= 0xff00; // 符号拡張あり
+  else
+    *imm &= 0x00ff; // 符号拡張なし
   *tag  = code & 0xf;
 }
 
@@ -440,5 +441,165 @@ void runsim(uint32_t code)
   error_check();
   
   if (ireg[STAC_PTR] < max_stack) max_stack = ireg[STAC_PTR];
+}
+
+void decode_order(uint32_t code, char *order)
+{
+  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0, disp = 0;
+  int16_t imm = 0;
+  int mode; /* 0..alu, 1..fpu, 2..mem */
+  char *ord, *suffix, s_regx[4], s_rega[4], s_regb[4], s_regc[4], s_imm[32];
+
+  opcode = code >> 27;
+
+  if (opcode == 0x2 || opcode == 0x3 || opcode == 0x6 || opcode == 0x7) {
+    split_mem(code, &rega, &regb, &pred, &disp);
+    mode = 2;
+  } else {
+    switch (opcode >> 2) {
+    case 0x0: split_alu(code, opcode, &regx, &rega, &regb, &imm, &tag); mode = 0; break;
+    case 0x1: split_fpu(code, &regx, &rega, &regb, &regc, &s, &tag); mode = 1; break;
+    default:  split_mem(code, &rega, &regb, &pred, &disp); mode = 2; break;
+    }
+  }
+
+  switch (opcode) {
+    /* ALU */
+  case 0x00:
+    suffix = "";
+  case 0x01:
+    if (opcode == 0x01) suffix = ".u";
+    switch (tag) {
+    case 0x0: ord = "add";      break;
+    case 0x1: ord = "sub";      break;
+    case 0x2: ord = "shl";      break;
+    case 0x3: ord = "shr";      break;
+    case 0x4: ord = "sar";      break;
+    case 0x5: ord = "and";      break;
+    case 0x6: ord = "or";       break;
+    case 0x7: ord = "not";      break;
+    case 0x8: ord = "xor";      break;
+    case 0x9: ord = "cat";      break;
+    case 0xc: ord = "cmpne";    break;
+    case 0xd: ord = "cmpeq";    break;
+    case 0xe: ord = "cmplt";    break;
+    case 0xf: ord = "cmple";    break;
+    default:  error("invalid optag: %08x", tag);       break;
+    } break;
+  case 0x02: ord = "ldl"; break;
+  case 0x03: ord = "ldh"; break;
+    /* FPU */
+  case 0x04:
+    switch (tag) {
+    case 0x00: ord = "fadd";    break;
+    case 0x01: ord = "fsub";    break;
+    case 0x02: ord = "fmul";    break;
+    case 0x03: ord = "fdiv";    break;
+    case 0x04: ord = "finv";    break;
+    case 0x05: ord = "fsqrt";   break;
+    case 0x06: ord = "ftoi";    break;
+    case 0x07: ord = "itof";    break;
+    case 0x08: ord = "floor";   break;
+    case 0x09: ord = "ffma";    break;
+    case 0x0a: ord = "fcat";    break;
+    case 0x0b: ord = "fand";    break;
+    case 0x0c: ord = "for";     break;
+    case 0x0d: ord = "fxor";    break;
+    case 0x0e: ord = "fnot";    break;
+    case 0x1c: ord = "fcmpne";  break;
+    case 0x1d: ord = "fcmpeq";  break;
+    case 0x1e: ord = "fcmplt";  break;
+    case 0x1f: ord = "fcmple";  break;
+    default:  error("invalid optag: %08x", tag);       break;
+    } break; 
+  case 0x06: ord = "fldl"; break;
+  case 0x07: ord = "fldh"; break;
+    /* MEMORY */
+  case 0x08: ord = "ld";  break;
+  case 0x09: ord = "st";  break;
+  case 0x0a: ord = "fld"; break;
+  case 0x0b: ord = "fst"; break;
+    /* BRANCH */
+  case 0x10: ord = "bne";  break;
+  case 0x11: ord = "beq";  break;
+  case 0x12: ord = "blt";  break;
+  case 0x13: ord = "ble";  break;
+  case 0x14: ord = "fbne";  break;
+  case 0x15: ord = "fbeq";  break;
+  case 0x16: ord = "fblt";  break;
+  case 0x17: ord = "fble";  break;
+    /* JUMP */
+  case 0x18: ord = "jl"; break;
+  case 0x19: ord = "jr"; break;
+    /* Error */
+  default:  error("invalid opcode: %08x", code); break;
+  }
+
+  if (mode == 0) {
+    strcpy(order, ord);
+    strcat(order, suffix);
+    strcat(order, " ");
+    strcat(order, "r");
+    sprintf(s_regx, "%d", regx);
+    strcat(order, s_regx);
+    strcat(order, ", ");
+    strcat(order, "r");
+    sprintf(s_rega, "%d", rega);
+    strcat(order, s_rega);
+    strcat(order, ", ");
+    strcat(order, "r");
+    sprintf(s_regb, "%d", regb);
+    strcat(order, s_regb);
+    strcat(order, ", ");
+    sprintf(s_imm, "%d", imm);
+    strcat(order, s_imm);
+    strcat(order, "\0");
+  } else if (mode == 1) {
+    strcpy(order, ord);
+    if      (s == 0) suffix = "";
+    else if (s == 1) suffix = ".neg";
+    else if (s == 2) suffix = ".abs";
+    else if (s == 3) suffix = ".abs.neg";
+    strcat(order, suffix);
+    strcat(order, " ");
+    strcat(order, "f");
+    sprintf(s_regx, "%d", regx);
+    strcat(order, s_regx);
+    strcat(order, ", ");
+    strcat(order, "f");
+    sprintf(s_rega, "%d", rega);
+    strcat(order, s_rega);
+    strcat(order, ", ");
+    strcat(order, "f");
+    sprintf(s_regb, "%d", regb);
+    strcat(order, s_regb);
+    strcat(order, ", ");
+    strcat(order, "f");
+    sprintf(s_regc, "%d", regc);
+    strcat(order, s_regc);
+    strcat(order, ", ");
+    sprintf(s_imm, "%d", imm);
+    strcat(order, s_imm);
+    strcat(order, "\0");
+  } else {
+    strcpy(order, ord);
+    if (pred == 0) suffix = "";
+    else           suffix = "+";
+    strcat(order, suffix);
+    strcat(order, " ");
+    if (opcode == 6 || opcode == 7 || opcode == 10 || opcode == 11 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcat(order, "f");
+    else strcat(order, "r");
+    sprintf(s_rega, "%d", rega);
+    strcat(order, s_rega);
+    strcat(order, ", ");
+    if (opcode == 6 || opcode == 7 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcat(order, "f");
+    else strcat(order, "r");
+    sprintf(s_regb, "%d", regb);
+    strcat(order, s_regb);
+    strcat(order, ", ");
+    sprintf(s_imm, "%d", imm);
+    strcat(order, s_imm);
+    strcat(order, "\0");
+  }      
 }
 

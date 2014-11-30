@@ -7,7 +7,7 @@ import struct
 import argparse
 
 
-srcs = {'_main': {0: 'jl r31, main'}}
+srcs = {'_main': {0: 'jl r29, main'}}
 filename = ''
 library = 'libmincaml_.s'
 pos = 0
@@ -22,7 +22,7 @@ def error(msg):
 #       utility functions (mainly parsing)
 # ----------------------------------------------------------------------
 
-iregs = {}
+iregs = {'rsp': 30, 'rbp': 31}
 for i in range(0, 32):
     iregs['r' + str(i)] = i
 
@@ -52,19 +52,19 @@ def parse_float(operand):
         return False, 0.0
 
 def parse_addr(operand):
-    m = re.match(r'(\$\w+)\s*([+-])\s*(\w+)$', operand)
+    m = re.match(r'(r\w+)\s*([+-])\s*(\w+)$', operand)
     if m:
         base = m.group(1)
         offset = m.group(2) + m.group(3)
         if is_reg(base) and parse_imm(offset)[0]:
             return True, base, offset
-    m = re.match(r'\$\w+$', operand)
+    m = re.match(r'r\w+$', operand)
     if m and is_reg(m.group()):
         return True, m.group(), '0'
     m = re.match(r'[+-]?\w+$', operand)
     if m and parse_imm(m.group())[0]:
-        return True, '$0', m.group()
-    return False, '$0', '0'
+        return True, 'r0', m.group()
+    return False, 'r0', '0'
 
 def try_parse_addr(operand):
     success, base, offset = parse_addr(operand)
@@ -111,7 +111,7 @@ def mkop_alu(op, a0, a1, a2, imm, tag):
         error('invalid syntax')
     check_imm_range(imm)
     head = chr((op << 3) + (a0 >> 2)) + chr(((a0 & 0x03) << 6) + (a1 << 1) + (a2 >> 4))
-    tail = chr(((a2 & 0x0f) << 4) + (imm >> 4)) + chr(((imm & 0x0f) << 4) + tag)
+    tail = chr(((a2 & 0x0f) << 4) + ((imm >> 4) & 0x0f)) + chr(((imm & 0x0f) << 4) + tag)
     return head + tail
 
 def mkop_fpu(op, a0, a1, a2, a3, signmode, tag):
@@ -526,82 +526,35 @@ def expand_add(operands):
 #         error('invalid syntax')
 #     return ['shift {}, {}, {}, {}'.format(operands[0], operands[1], base, offset)]
 
-# def expand_shl(operands):
-#     check_operands_n(operands, 3)
-#     return ['shift {}, {}, $0, {}'.format(operands[0], operands[1], operands[2])]
-
-# def expand_shr(operands):
-#     check_operands_n(operands, 3)
-#     success, imm = parse_imm(operands[2])
-#     if success:
-#         return ['shift {}, {}, $0, {}'.format(operands[0], operands[1], str(-imm))]
-#     error('invalid syntax')
-
-# def expand_fsub(operands):
-#     check_operands_n(operands, 3)
-#     return [
-#         'fneg {}, {}'.format(operands[2], operands[2]),
-#         'fadd {}, {}, {}'.format(operands[0], operands[1], operands[2]),
-#         'fneg {}, {}'.format(operands[2], operands[2])
-#     ]
-
-# def expand_br(operands):
-#     check_operands_n(operands, 1)
-#     ret = try_parse_addr(operands[0])
-#     return ['beq $0, $0, {}'.format(ret)]
-
-# def expand_beq(operands):
-#     check_operands_n(operands, 3, 4)
-#     if len(operands) == 4:
-#         return ['beq {}'.format(', '.join(operands))]
-#     ret = try_parse_addr(operands[2])
-#     return ['beq {}, {}, {}'.format(operands[0], operands[1], ret)]
-
-# def expand_ble(operands):
-#     check_operands_n(operands, 3, 4)
-#     if len(operands) == 4:
-#         return ['ble {}'.format(', '.join(operands))]
-#     ret = try_parse_addr(operands[2])
-#     return ['ble {}, {}, {}'.format(operands[0], operands[1], ret)]
-
-# def expand_bge(operands):
-#     check_operands_n(operands, 3)
-#     ret = try_parse_addr(operands[2])
-#     return ['ble {}, {}, {}'.format(operands[1], operands[0], ret)]
-
 def expand_push(operands):
     check_operands_n(operands, 1)
     return [
-        'add $sp, $sp, $0, -1',
-        'store {}, $sp, 0'.format(operands[0])
+        'add rsp, rsp, r0, -1',
+        'st {}, rsp, 0'.format(operands[0])
     ]
 
 def expand_pop(operands):
     check_operands_n(operands, 1)
     return [
-        'load {}, $sp, 0'.format(operands[0]),
-        'add $sp, $sp, $0, 1'
+        'ld {}, rsp, 0'.format(operands[0]),
+        'add rsp, rsp, r0, 1'
     ]
 
 def expand_call(operands):
     check_operands_n(operands, 1)
     ret = try_parse_addr(operands[0])
     return [
-        'store $bp, $sp, -1',
-        'store $ip, $sp, -2',
-        'add $sp, $sp, $0, -2',
-        'add $bp, $sp, $0, 0',
-        'beq $0, $0, {}'.format(ret),
-        'add $sp, $bp, $0, 2',
-        'load $bp, $sp, -1'
+        'st rbp, rsp, -1',
+        'add rsp, rsp, r0, -1',
+        'add rbp, rsp, r0, 0',
+        'jl r29, {}'.format(ret),
+        'add rsp, rbp, r0, 1',
+        'ld rbp, rsp, -1'
     ]
 
 def expand_ret(operands):
     check_operands_n(operands, 0)
-    return [
-        'load $12, $bp, 0',
-        'beq $0, $0, $12, 4'
-    ]
+    return ['jr r29']
 
 def expand_halt(operands):
     check_operands_n(operands, 0)
@@ -747,7 +700,7 @@ if os.path.isfile(library) and library not in args.inputs:
 library = re.sub(r'.*[/\\]', '', library)
 
 # 0. preprocess
-lines0 = [('jl r31, main', '_main', 0)]                     
+lines0 = [('jl r29, main', '_main', 0)]                     
 for filename in args.inputs:
     with open(filename, 'r') as f:
         filename = re.sub(r'.*[/\\]', '', filename)

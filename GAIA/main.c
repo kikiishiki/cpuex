@@ -114,12 +114,13 @@ float to_float(uint32_t i);
 int step_fun()
 {
   char c;
-  char command[128];
+  char command[128], order[256];
   char *tok;
   int i;
   int addr;
   
-  printf("%lld(0x%05x):\t0x%08x\n", inst_cnt, prog_cnt, mem[prog_cnt]);
+  decode_order(mem[prog_cnt], order);
+  printf("%lld(0x%05x):\t%s(0x%08x)\n", inst_cnt, prog_cnt, order, mem[prog_cnt]);
 
   printf("sim > ");
   
@@ -269,7 +270,7 @@ int read_address(char *addr)
     address = -1;
   }
 
-  return address;
+  return address - 1;
 }
 
 float to_float(uint32_t i)
