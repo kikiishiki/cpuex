@@ -119,7 +119,7 @@ int step_fun()
   int i;
   int addr;
   
-  decode_order(mem[prog_cnt], order);
+  decode_opcode(mem[prog_cnt], order);
   printf("%lld(0x%05x):\t%s(0x%08x)\n", inst_cnt, prog_cnt, order, mem[prog_cnt]);
 
   printf("sim > ");
@@ -184,7 +184,7 @@ int step_fun()
     if ((addr = read_address(tok)) < 0) {
       return 1;
     }
-    printf("mem[0x%05x]: %11d (0x%08x)\n", addr, mem[addr], mem[addr]);
+    printf("mem[0x%05x]: %11d (0x%08x)\n", addr+1, mem[addr], mem[addr]);
     return 1;
   }
 

@@ -4,6 +4,6 @@
 #include <stdint.h>
 
 void runsim(uint32_t code);
-void decode_order(uint32_t code, char *order);
+void decode_opcode(uint32_t code, char *order);
 
 #endif

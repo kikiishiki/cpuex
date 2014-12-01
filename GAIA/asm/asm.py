@@ -545,16 +545,20 @@ def expand_call(operands):
     ret = try_parse_addr(operands[0])
     return [
         'st rbp, rsp, -1',
-        'add rsp, rsp, r0, -1',
+        'st r29, rsp, -2',
+        'add rsp, rsp, r0, -2',
         'add rbp, rsp, r0, 0',
         'jl r29, {}'.format(ret),
-        'add rsp, rbp, r0, 1',
+        'add rsp, rbp, r0, 2',
+        'ld r29, rsp, -2',
         'ld rbp, rsp, -1'
     ]
 
 def expand_ret(operands):
     check_operands_n(operands, 0)
-    return ['jr r29']
+    return [
+        'jr r29'
+    ]
 
 def expand_halt(operands):
     check_operands_n(operands, 0)

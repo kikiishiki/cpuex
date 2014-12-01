@@ -206,33 +206,33 @@ void fldh(uint32_t fx, uint32_t fa, int16_t imm) {
   freg[fx] = (((uint32_t)imm << 16) & 0xffff0000) | (freg[fa] & 0x0000ffff);
 }
 
-void ld(uint32_t rx, uint32_t ra, int16_t imm) {
+void ld(uint32_t rx, uint32_t ra, int16_t disp) {
   int32_t address;
-  address = ireg[ra] + imm;
+  address = ireg[ra] + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("load: invalid address: %x\n", address);
   ireg[rx] = load(address);
 }
 
-void st(uint32_t ra, uint32_t rb, int16_t imm) {
+void st(uint32_t ra, uint32_t rb, int16_t disp) {
   int32_t address;
-  address = ireg[rb] + imm;
+  address = ireg[rb] + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("store: invalid address: %x\n", address);
   store(address,ireg[ra]);
 }
 
-void fld(uint32_t fx, uint32_t ra, int16_t imm) {
+void fld(uint32_t fx, uint32_t ra, int16_t disp) {
   int32_t address;
-  address = ireg[ra] + imm;
+  address = ireg[ra] + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("load: invalid address: %x\n", address);
   freg[fx] = load(address);
 }
 
-void fst(uint32_t fa, uint32_t rb, int16_t imm) {
+void fst(uint32_t fa, uint32_t rb, int16_t disp) {
   int32_t address;
-  address = ireg[rb] + imm;
+  address = ireg[rb] + disp;
   if (address < 0 || address >= MEM_SIZE)
     error("store: invalid address: %x\n", address);
   store(address,freg[fa]);
@@ -333,7 +333,7 @@ void split_fpu(uint32_t code, uint32_t *regx, uint32_t *rega, uint32_t *regb, ui
   *tag  = code & 0xf;
 }
 
-void split_mem(uint32_t code, uint32_t *rega, uint32_t *regb, uint32_t *pred, uint32_t *disp) { 
+void split_mem(uint32_t code, uint32_t *rega, uint32_t *regb, uint32_t *pred, int16_t *disp) { 
   *rega = (code >> 22) & 0x1f;
   *regb = (code >> 17) & 0x1f;
   *pred  = (code >> 16) & 0x1;
@@ -350,8 +350,8 @@ void error_check()
 
 void runsim(uint32_t code)
 {
-  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0, disp = 0;
-  int16_t imm = 0;
+  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0;
+  int16_t imm = 0, disp = 0;
 
   opcode = code >> 27;
 
@@ -443,12 +443,12 @@ void runsim(uint32_t code)
   if (ireg[STAC_PTR] < max_stack) max_stack = ireg[STAC_PTR];
 }
 
-void decode_order(uint32_t code, char *order)
+void decode_opcode(uint32_t code, char *order)
 {
-  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0, disp = 0;
-  int16_t imm = 0;
+  uint32_t opcode = 0, regx = 0, rega = 0, regb = 0, regc = 0, s = 0, tag = 0, pred = 0;
+  int16_t imm = 0, disp = 0;
   int mode; /* 0..alu, 1..fpu, 2..mem */
-  char *ord, *suffix, s_regx[4], s_rega[4], s_regb[4], s_regc[4], s_imm[32];
+  char *ord, *suffix, s1[2], s2[2];
 
   opcode = code >> 27;
 
@@ -536,70 +536,21 @@ void decode_order(uint32_t code, char *order)
   }
 
   if (mode == 0) {
-    strcpy(order, ord);
-    strcat(order, suffix);
-    strcat(order, " ");
-    strcat(order, "r");
-    sprintf(s_regx, "%d", regx);
-    strcat(order, s_regx);
-    strcat(order, ", ");
-    strcat(order, "r");
-    sprintf(s_rega, "%d", rega);
-    strcat(order, s_rega);
-    strcat(order, ", ");
-    strcat(order, "r");
-    sprintf(s_regb, "%d", regb);
-    strcat(order, s_regb);
-    strcat(order, ", ");
-    sprintf(s_imm, "%d", imm);
-    strcat(order, s_imm);
-    strcat(order, "\0");
+    sprintf(order, "%s%s r%d, r%d, r%d, %d", ord, suffix, regx, rega, regb, imm);
   } else if (mode == 1) {
-    strcpy(order, ord);
     if      (s == 0) suffix = "";
     else if (s == 1) suffix = ".neg";
     else if (s == 2) suffix = ".abs";
     else if (s == 3) suffix = ".abs.neg";
-    strcat(order, suffix);
-    strcat(order, " ");
-    strcat(order, "f");
-    sprintf(s_regx, "%d", regx);
-    strcat(order, s_regx);
-    strcat(order, ", ");
-    strcat(order, "f");
-    sprintf(s_rega, "%d", rega);
-    strcat(order, s_rega);
-    strcat(order, ", ");
-    strcat(order, "f");
-    sprintf(s_regb, "%d", regb);
-    strcat(order, s_regb);
-    strcat(order, ", ");
-    strcat(order, "f");
-    sprintf(s_regc, "%d", regc);
-    strcat(order, s_regc);
-    strcat(order, ", ");
-    sprintf(s_imm, "%d", imm);
-    strcat(order, s_imm);
-    strcat(order, "\0");
+    sprintf(order, "%s%s f%d, f%d, f%d, f%d, %d", ord, suffix, regx, rega, regb, regc, imm);
   } else {
-    strcpy(order, ord);
     if (pred == 0) suffix = "";
     else           suffix = "+";
-    strcat(order, suffix);
-    strcat(order, " ");
-    if (opcode == 6 || opcode == 7 || opcode == 10 || opcode == 11 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcat(order, "f");
-    else strcat(order, "r");
-    sprintf(s_rega, "%d", rega);
-    strcat(order, s_rega);
-    strcat(order, ", ");
-    if (opcode == 6 || opcode == 7 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcat(order, "f");
-    else strcat(order, "r");
-    sprintf(s_regb, "%d", regb);
-    strcat(order, s_regb);
-    strcat(order, ", ");
-    sprintf(s_imm, "%d", imm);
-    strcat(order, s_imm);
-    strcat(order, "\0");
+    if (opcode == 6 || opcode == 7 || opcode == 10 || opcode == 11 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcpy(s1, "f");
+    else strcpy(s1, "r");
+    if (opcode == 6 || opcode == 7 || opcode == 20 || opcode == 21 || opcode == 22 || opcode == 23) strcpy(s2, "f");
+    else strcpy(s2, "r");
+    sprintf(order, "%s%s %s%d, %s%d, %d", ord, suffix, s1, rega, s2, regb, disp);
   }      
 }
 
