@@ -117,10 +117,11 @@ int step_fun()
   char command[128], order[256];
   char *tok;
   int i;
-  int addr;
+  int addr, to_addr;
+  int pm_mode = 0; /* pm_mode...0:default, 1:float, 2:opcode */
   
   decode_opcode(mem[prog_cnt], order);
-  printf("%lld(0x%05x):\t%s(0x%08x)\n", inst_cnt, prog_cnt, order, mem[prog_cnt]);
+  printf("%lld(0x%05x):\t%s(0x%08x)\n", inst_cnt, prog_cnt+1, order, mem[prog_cnt]);
 
   printf("sim > ");
   
@@ -178,16 +179,73 @@ int step_fun()
   else if (!strcmp(tok, "pm") || !strcmp(tok, "print_mem")) {
     tok = strtok(NULL, " \t\n");
     if (!tok) {
-      puts("Please enter the memory address.");
+      puts("Util : pm <option> [addr]");
+      puts("----------");
+      puts("pm -f [addr]  : 浮動小数点数で出力");
+      puts("pm -c [addr]  : opcodeと見なして、デコードして出力");
       return 1;
+    } else if (!strcmp(tok, "-f")) {
+      pm_mode = 1;
+      tok = strtok(NULL, " \t\n"); 
+    } else if (!strcmp(tok, "-c")) {
+      pm_mode = 2;
+      tok = strtok(NULL, " \t\n");
     }
     if ((addr = read_address(tok)) < 0) {
       return 1;
     }
-    printf("mem[0x%05x]: %11d (0x%08x)\n", addr+1, mem[addr], mem[addr]);
+    if (pm_mode == 0)
+      printf("mem[0x%05x]: %11d (0x%08x)\n", addr+1, mem[addr], mem[addr]);
+    else if (pm_mode == 1) 
+      printf("mem[0x%05x]: %f\t(0x%08x)\n", addr+1, to_float(mem[addr]), mem[addr]);
+    else {
+      decode_opcode(mem[addr], order);
+      printf("mem[0x%05x]: %s\t(0x%08x)\n", addr+1, order, mem[addr]);
+    }
     return 1;
   }
 
+  else if (!strcmp(tok, "pms") || !strcmp(tok, "print_mems")) {
+    tok = strtok(NULL, " \t\n");
+    if (!tok) {
+      puts("Util : pms <option> [addr1] [addr2]");
+      puts("----------");
+      puts("pms -f ...    : 浮動小数点数で出力");
+      puts("pms -c ...    : opcodeと見なして、デコードして出力");
+      return 1;
+    } else if (!strcmp(tok, "-f")) {
+      pm_mode = 1;
+      tok = strtok(NULL, " \t\n"); 
+    } else if (!strcmp(tok, "-c")) {
+      pm_mode = 2;
+      tok = strtok(NULL, " \t\n");
+    }
+    if ((addr = read_address(tok)) < 0) {
+      return 1;
+    }
+    tok = strtok(NULL, " \t\n");
+    if ((to_addr = read_address(tok)) < 0) {
+      return 1;
+    }
+    if (addr > to_addr) {
+      puts("invalid address");
+      return 1;
+    }
+    if (pm_mode == 0)
+      for (; addr<=to_addr; addr++)
+	printf("mem[0x%05x]: %11d (0x%08x)\n", addr+1, mem[addr], mem[addr]);
+    else if (pm_mode == 1) 
+      for (; addr<=to_addr; addr++)
+	printf("mem[0x%05x]: %f\t(0x%08x)\n", addr+1, to_float(mem[addr]), mem[addr]);
+    else {
+      for (; addr<=to_addr; addr++) {
+	decode_opcode(mem[addr], order);
+	printf("mem[0x%05x]: %s\t(0x%08x)\n", addr+1, order, mem[addr]);
+      }
+    }
+    return 1;
+  }
+  
   else if (!strcmp(tok, "pc") || !strcmp(tok, "print_cnt")) {
     print_cnt(stdout);
     return 1;
@@ -227,6 +285,7 @@ int step_fun()
     puts("db [addr], delete_bp [addr]: memory[addr]のブレークポイントを解除");
     puts("pe,        print_env       : 環境を表示");
     puts("pm [addr], print_mem [addr]: memory[addr]の内容を表示");
+    puts("pms [addr1] [addr2]        : memory[addr1]からmemory[addr2]までの内容を表示");
     puts("pc,        print_cnt       : 各命令の実行回数を表示");
     puts("re,        rerun           : 命令をはじめから実行");
     puts("addr_mode                  : [addr]の入力形式を指定");
