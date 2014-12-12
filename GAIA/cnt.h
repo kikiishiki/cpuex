@@ -3,16 +3,20 @@
 
 extern long long inst_cnt;
 
-extern long long alu_cnt[18];
+extern long long alu_cnt[32];
 
-extern long long fpu_cnt[34];
+extern long long fpu_cnt[32];
 
-extern long long ld_cnt;
+extern long long ldl_cnt;
+extern long long ldh_cnt;
+
 extern long long st_cnt;
-extern long long fld_cnt;
-extern long long fst_cnt;
+extern long long ld_cnt;
 
-extern long long jump_cnt[10];
+extern long long jl_cnt;
+extern long long jr_cnt;
+extern long long bne_cnt;
+extern long long beq_cnt;
 
 extern long long miss_cnt;
 
