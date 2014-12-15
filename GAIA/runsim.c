@@ -186,33 +186,33 @@ void st(uint32_t ra, uint32_t rb, int16_t disp) {
 
 void jl(uint32_t rx, int16_t disp) {
   int32_t address;
-  address = prog_cnt + disp*4;
+  address = prog_cnt + 4 + disp*4;
   if (address < 0 || address >= MEM_SIZE)
     error("jl: invalid address: %x\n", address);
-  ireg[rx] = prog_cnt + 1;
-  prog_cnt = address - 1;
+  ireg[rx] = prog_cnt + 4;
+  prog_cnt = address;
 }
 
 void jr(uint32_t ra) {
-  prog_cnt = ireg[ra] - 1;
+  prog_cnt = ireg[ra];
 }
 
 void bne(uint32_t ra, uint32_t rb, int16_t disp) {
   int32_t address;
-  address = prog_cnt + disp*4;
+  address = prog_cnt + 4 + disp*4;
   if (address < 0 || address >= MEM_SIZE)
     error("bne: invalid address: %x\n", address);
   if (ireg[ra] != ireg[rb])
-    prog_cnt = address - 1;
+    prog_cnt = address;
 }
 
 void beq(uint32_t ra, uint32_t rb, int16_t disp) {
   int32_t address;
-  address = prog_cnt + disp*4;
+  address = prog_cnt + 4 + disp*4;
   if (address < 0 || address >= MEM_SIZE)
     error("beq: invalid address: %x\n", address);
   if (ireg[ra] == ireg[rb])
-    prog_cnt = address - 1;
+    prog_cnt = address;
 }
 
 /* ここからrunsimの本体部分 */

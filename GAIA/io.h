@@ -16,7 +16,7 @@ extern char write_buf[BUF_SIZE];
 extern int read_pos;
 extern int write_pos;
 
-void io_read(uint32_t rd);
-void io_write(uint32_t rs);
+uint32_t io_read();
+void io_write(uint32_t data);
 
 #endif
